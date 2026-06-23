@@ -8,7 +8,7 @@ const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL;
 const SUPABASE_KEY = process.env.REACT_APP_SUPABASE_KEY;
 const ENVIO_DEPTO = 3.39;
 const COMISION = 0.10;
-const LOGO_URL = "https://drive.google.com/uc?export=view&id=1N4SU3xs9IBFS0qe4iVl6pE2IPuPMLMIa";
+const LOGO_URL = "/logo.png";
 
 const USUARIOS = [
   { usuario: "admin", password: "admin2026", rol: "admin", nombre: "Administrador" },
