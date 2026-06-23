@@ -47,7 +47,7 @@ function Login({ onLogin }) {
     <div style={{
       minHeight: "100vh", background: "#f5f5f7",
       display: "flex", alignItems: "center", justifyContent: "center",
-      fontFamily: "-apple-system, 'SF Pro Display', 'DM Sans', sans-serif",
+      fontFamily: "'Inter', sans-serif",
       padding: "1rem",
     }}>
       <div style={{ width: "100%", maxWidth: 360, textAlign: "center" }}>
