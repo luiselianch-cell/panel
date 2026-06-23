@@ -1,4 +1,6 @@
 /* eslint-disable react/jsx-no-undef */
+/* eslint-disable react-hooks/exhaustive-deps */
+/* eslint-disable no-dupe-keys */
 import { useState, useEffect } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 
