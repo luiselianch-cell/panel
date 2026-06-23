@@ -100,7 +100,7 @@ function Navbar({ user, onLogout, activeTab, setActiveTab }) {
       WebkitBackdropFilter: "blur(20px)",
       borderBottom: "1px solid rgba(0,0,0,0.06)",
       position: "sticky", top: 0, zIndex: 100,
-      fontFamily: "-apple-system, 'SF Pro Display', 'DM Sans', sans-serif",
+      fontFamily: "'Inter', sans-serif",
     }}>
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 1.5rem", display: "flex", alignItems: "center", height: 52, gap: "2rem" }}>
         <img src={LOGO_URL} alt="Tecno Gadget" style={{ width: 30, height: 30, borderRadius: "8px" }} />
@@ -594,7 +594,7 @@ export default function App() {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: "#f5f5f7", fontFamily: "-apple-system, 'SF Pro Display', 'DM Sans', sans-serif" }}>
+    <div style={{ minHeight: "100vh", background: "#f5f5f7", fontFamily: "'Inter', sans-serif" }}>
       <Navbar user={user} onLogout={() => setUser(null)} activeTab={activeTab} setActiveTab={setActiveTab} />
       {renderContent()}
     </div>
