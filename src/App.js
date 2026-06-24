@@ -330,9 +330,8 @@ function TablaOrdenes({ ordenes, tipo, onUpdateEnvio, esAdmin }) {
                     <span style={{ color: "#ff3b30", fontSize: "0.82rem" }}>-${ENVIO_DEPTO}</span>
                   ) : esAdmin ? (
                     <input
-  type="number"
-  step="0.01"
-  min="0"
+  type="text"
+  inputMode="decimal"
   defaultValue={envios[o.id] || 0}
   onFocus={e => e.target.style.border = "1.5px solid #007AFF"}
   onBlur={e => {
