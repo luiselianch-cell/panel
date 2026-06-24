@@ -14,7 +14,7 @@ const LOGO_URL = "/Logo-banner.png";
 
 const USUARIOS = [
   { usuario: "admin", password: "admin2026", rol: "admin", nombre: "Administrador" },
-  { usuario: "Maressa", password: "maressa26", rol: "vendedor", nombre: "Maressa" },
+  { usuario: "maressa", password: "1", rol: "vendedor", nombre: "Maressa" },
 ];
 
 const CHART_COLORS = ["#007AFF", "#34C759", "#FF9500", "#FF2D55", "#5856D6"];
