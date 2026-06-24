@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 // eslint-disable-next-line no-unused-vars
 import { Search } from "lucide-react";
-import { Home, ClipboardList, BarChart2, Users } from "lucide-react";
+import { Home, ClipboardList, BarChart2, Users, Search, Menu } from "lucide-react";
 
 const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL;
 const SUPABASE_KEY = process.env.REACT_APP_SUPABASE_KEY;
@@ -100,97 +100,179 @@ function Login({ onLogin }) {
 // ══ Navbar ════════════════════════════════════════════════
 function Navbar({ user, onLogout, activeTab, setActiveTab }) {
   const [showMenu, setShowMenu] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+  useEffect(() => {
+    function handleResize() { setIsMobile(window.innerWidth < 768); }
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   const tabs = user.rol === "admin"
     ? [{ id: "dashboard", icon: <Home size={15} />, label: "Inicio" }, { id: "ordenes", icon: <ClipboardList size={15} />, label: "Órdenes" }, { id: "estadisticas", icon: <BarChart2 size={15} />, label: "Estadísticas" }, { id: "vendedores", icon: <Users size={15} />, label: "Vendedores" }]
     : [{ id: "mis-ordenes", icon: <ClipboardList size={15} />, label: "Mis Órdenes" }, { id: "mis-stats", icon: <BarChart2 size={15} />, label: "Mis Stats" }];
 
+  function handleTabClick(id) {
+    setActiveTab(id);
+    setShowMenu(false);
+  }
+
   return (
-    <div style={{
-      background: "rgba(255,255,255,0.85)", backdropFilter: "blur(20px)",
-      WebkitBackdropFilter: "blur(20px)",
-      borderBottom: "1px solid rgba(0,0,0,0.06)",
-      position: "sticky", top: 0, zIndex: 100,
-      fontFamily: "'Inter', sans-serif",
-    }}>
-      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 1rem", display: "flex", alignItems: "center", height: "auto", minHeight: 52, gap: "1rem", flexWrap: "wrap" }}>
-        <img src={LOGO_URL} alt="Tecno Gadget" style={{ width: 150, borderRadius: "6px" }} />
+    <>
+      <div style={{
+        background: "rgba(255,255,255,0.85)",
+        backdropFilter: "blur(20px)",
+        WebkitBackdropFilter: "blur(20px)",
+        borderBottom: "1px solid rgba(0,0,0,0.06)",
+        position: "sticky", top: 0, zIndex: 100,
+        fontFamily: "'Inter', sans-serif",
+      }}>
+        <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 1rem", display: "flex", alignItems: "center", height: 52, gap: "1rem" }}>
 
-        <div style={{ display: "flex", gap: "0.25rem", flex: 1, overflowX: "auto", scrollbarWidth: "none" }}>
-          {tabs.map(tab => (
-            <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{
-              adding: "0.4rem 0.85rem",
-  background: "transparent",
-  color: activeTab === tab.id ? "#007AFF" : "#6e6e73",
-  border: "none",
-  borderBottom: activeTab === tab.id ? "2px solid #007AFF" : "2px solid transparent",
-  borderRadius: "0",
-  fontWeight: activeTab === tab.id ? 600 : 400,
-  fontSize: "0.88rem",
-  cursor: "pointer",
-  transition: "all 0.15s",
-  paddingBottom: "0.5rem",
-}}>
-  {tab.label}
-</button>
-          ))}
-        </div>
+          {/* Logo */}
+          <img src={LOGO_URL} alt="Tecno Gadget" style={{ height: 28, borderRadius: "6px", flexShrink: 0 }} />
 
-         <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
-  <Search size={14} color="#6e6e73" style={{ position: "absolute", left: 10, pointerEvents: "none" }} />
-  <input
-    placeholder="Buscar ficha o vendedor..."
-    style={{
-      padding: "0.4rem 0.85rem 0.4rem 2rem",
-      border: "1px solid #e5e5ea",
-      borderRadius: "20px",
-      fontSize: "0.82rem",
-      background: "#f5f5f7",
-      outline: "none",
-      fontFamily: "'Inter', sans-serif",
-      width: 220,
-      color: "#1d1d1f",
-    }}
-  />
-</div>
-
-        <div style={{ position: "relative" }}>
-          <button onClick={() => setShowMenu(!showMenu)} style={{
-            display: "flex", alignItems: "center", gap: "0.5rem",
-            background: "transparent", border: "none", cursor: "pointer",
-            color: "#1d1d1f", fontSize: "0.85rem", fontWeight: 500,
-            padding: "0.4rem 0.75rem", borderRadius: "8px",
-            background: showMenu ? "rgba(0,0,0,0.05)" : "transparent",
-          }}>
-            <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#007AFF", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: "0.78rem", fontWeight: 700 }}>
-              {user.nombre.charAt(0)}
+          {/* Pestañas — solo desktop */}
+          {!isMobile && (
+            <div style={{ display: "flex", flex: 1 }}>
+              {tabs.map(tab => (
+                <button key={tab.id} onClick={() => handleTabClick(tab.id)} style={{
+                  padding: "0.4rem 0.85rem",
+                  background: "transparent",
+                  color: activeTab === tab.id ? "#007AFF" : "#6e6e73",
+                  border: "none",
+                  borderBottom: activeTab === tab.id ? "2px solid #007AFF" : "2px solid transparent",
+                  borderRadius: 0,
+                  fontWeight: activeTab === tab.id ? 600 : 400,
+                  fontSize: "0.88rem",
+                  cursor: "pointer",
+                  display: "flex", alignItems: "center", gap: "0.35rem",
+                  transition: "all 0.15s",
+                  paddingBottom: "0.5rem",
+                  fontFamily: "'Inter', sans-serif",
+                }}>
+                  {tab.icon}{tab.label}
+                </button>
+              ))}
             </div>
-            <span>{user.nombre.split(" ")[0]}</span>
-            <span style={{ fontSize: "0.7rem", color: "#6e6e73" }}>▾</span>
-          </button>
+          )}
 
-          {showMenu && (
-            <div style={{
-              position: "absolute", top: "calc(100% + 8px)", right: 0,
-              background: "#fff", borderRadius: "12px",
-              minWidth: 180, zIndex: 200,
+          {isMobile && <div style={{ flex: 1 }} />}
+
+          {/* Búsqueda — botón con icono */}
+          <div style={{ position: "relative" }}>
+            <button onClick={() => setShowSearch(!showSearch)} style={{
+              background: "transparent", border: "none", cursor: "pointer",
+              padding: "0.4rem", borderRadius: "8px", display: "flex", alignItems: "center",
+              color: "#6e6e73",
             }}>
-              <div style={{ padding: "0.5rem 0.75rem", borderBottom: "1px solid #f5f5f7", marginBottom: "0.25rem" }}>
-                <div style={{ fontSize: "0.82rem", fontWeight: 600, color: "#1d1d1f" }}>{user.nombre}</div>
-                <div style={{ fontSize: "0.72rem", color: "#6e6e73", textTransform: "uppercase", letterSpacing: "0.05em" }}>{user.rol}</div>
+              <Search size={18} />
+            </button>
+            {showSearch && (
+              <div style={{
+                position: "absolute", top: "calc(100% + 8px)", right: 0,
+                background: "#fff", borderRadius: "12px",
+                boxShadow: "0 8px 30px rgba(0,0,0,0.12)",
+                padding: "0.5rem", zIndex: 200, width: 260,
+              }}>
+                <input
+                  autoFocus
+                  placeholder="Buscar ficha o vendedor..."
+                  style={{
+                    width: "100%", padding: "0.5rem 0.75rem",
+                    border: "1px solid #e5e5ea", borderRadius: "8px",
+                    fontSize: "0.85rem", outline: "none",
+                    fontFamily: "'Inter', sans-serif",
+                    boxSizing: "border-box",
+                  }}
+                />
               </div>
-              <button onClick={onLogout} style={{
-                width: "100%", textAlign: "left", padding: "0.6rem 0.75rem",
-                background: "transparent", border: "none", borderRadius: "8px",
-                color: "#ff3b30", fontSize: "0.85rem", cursor: "pointer",
-                fontWeight: 500,
-              }}>Cerrar sesión</button>
-            </div>
+            )}
+          </div>
+
+          {/* Usuario */}
+          <div style={{ position: "relative" }}>
+            <button onClick={() => setShowUserMenu(!showUserMenu)} style={{
+              display: "flex", alignItems: "center", gap: "0.4rem",
+              background: "transparent", border: "none", cursor: "pointer",
+              padding: "0.3rem 0.5rem", borderRadius: "8px",
+            }}>
+              <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#007AFF", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: "0.78rem", fontWeight: 700, flexShrink: 0 }}>
+                {user.nombre.charAt(0)}
+              </div>
+              {!isMobile && <span style={{ fontSize: "0.85rem", color: "#1d1d1f", fontWeight: 500 }}>{user.nombre.split(" ")[0]}</span>}
+            </button>
+
+            {showUserMenu && (
+              <div style={{
+                position: "absolute", top: "calc(100% + 8px)", right: 0,
+                background: "#fff", borderRadius: "12px",
+                boxShadow: "0 8px 30px rgba(0,0,0,0.12)",
+                padding: "0.5rem", minWidth: 180, zIndex: 200,
+              }}>
+                <div style={{ padding: "0.5rem 0.75rem", borderBottom: "1px solid #f5f5f7", marginBottom: "0.25rem" }}>
+                  <div style={{ fontSize: "0.82rem", fontWeight: 600, color: "#1d1d1f" }}>{user.nombre}</div>
+                  <div style={{ fontSize: "0.72rem", color: "#6e6e73", textTransform: "uppercase", letterSpacing: "0.05em" }}>{user.rol}</div>
+                </div>
+                <button onClick={onLogout} style={{
+                  width: "100%", textAlign: "left", padding: "0.6rem 0.75rem",
+                  background: "transparent", border: "none", borderRadius: "8px",
+                  color: "#ff3b30", fontSize: "0.85rem", cursor: "pointer", fontWeight: 500,
+                  fontFamily: "'Inter', sans-serif",
+                }}>Cerrar sesión</button>
+              </div>
+            )}
+          </div>
+
+          {/* Hamburguesa — solo móvil */}
+          {isMobile && (
+            <button onClick={() => setShowMenu(!showMenu)} style={{
+              background: "transparent", border: "none", cursor: "pointer",
+              padding: "0.4rem", borderRadius: "8px", color: "#1d1d1f",
+              display: "flex", alignItems: "center",
+            }}>
+              <Menu size={22} />
+            </button>
           )}
         </div>
       </div>
-    </div>
+
+      {/* Menú móvil desplegable */}
+      {isMobile && showMenu && (
+        <div style={{
+          background: "rgba(255,255,255,0.97)",
+          backdropFilter: "blur(20px)",
+          WebkitBackdropFilter: "blur(20px)",
+          borderBottom: "1px solid rgba(0,0,0,0.06)",
+          padding: "0.5rem 1rem",
+          fontFamily: "'Inter', sans-serif",
+          zIndex: 99,
+          position: "sticky", top: 52,
+        }}>
+          {tabs.map(tab => (
+            <button key={tab.id} onClick={() => handleTabClick(tab.id)} style={{
+              width: "100%", textAlign: "left",
+              padding: "0.75rem 0.85rem",
+              background: activeTab === tab.id ? "rgba(0,122,255,0.08)" : "transparent",
+              color: activeTab === tab.id ? "#007AFF" : "#1d1d1f",
+              border: "none", borderRadius: "10px",
+              fontWeight: activeTab === tab.id ? 600 : 400,
+              fontSize: "0.92rem", cursor: "pointer",
+              display: "flex", alignItems: "center", gap: "0.6rem",
+              marginBottom: "0.15rem",
+              fontFamily: "'Inter', sans-serif",
+            }}>
+              {tab.icon}{tab.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </>
   );
 }
+
 
 // ══ StatCard ══════════════════════════════════════════════
 function StatCard({ label, value, sub, accent }) {
