@@ -506,7 +506,7 @@ function ModalEditar({ orden, tipo, onClose, onSave }) {
 // ══ TablaOrdenes ══════════════════════════════════════════
 function TablaOrdenes({ ordenes, tipo, onUpdateEnvio, esAdmin, onSave }) {
   const [ordenEditar, setOrdenEditar] = useState(null);
-  const [tipoEditar] = useState(null);
+  const [tipoEditar, setTipoEditar] = useState(null);
   const [envios, setEnvios] = useState(() => {
     const obj = {};
     ordenes.forEach(o => { obj[o.id] = o.costo_envio || 0; });
