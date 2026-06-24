@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 // eslint-disable-next-line no-unused-vars
 import { Search } from "lucide-react";
+import { Home, ClipboardList, BarChart2, Users } from "lucide-react";
 
 const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL;
 const SUPABASE_KEY = process.env.REACT_APP_SUPABASE_KEY;
@@ -96,8 +97,8 @@ function Login({ onLogin }) {
 function Navbar({ user, onLogout, activeTab, setActiveTab }) {
   const [showMenu, setShowMenu] = useState(false);
   const tabs = user.rol === "admin"
-    ? [{ id: "ordenes", label: "Órdenes" }, { id: "estadisticas", label: "Estadísticas" }, { id: "vendedores", label: "Vendedores" }]
-    : [{ id: "mis-ordenes", label: "Mis Órdenes" }, { id: "mis-stats", label: "Mis Stats" }];
+    ? [{ id: "dashboard", icon: <Home size={15} />, label: "Inicio" }, { id: "ordenes", icon: <ClipboardList size={15} />, label: "Órdenes" }, { id: "estadisticas", icon: <BarChart2 size={15} />, label: "Estadísticas" }, { id: "vendedores", icon: <Users size={15} />, label: "Vendedores" }]
+    : [{ id: "mis-ordenes", icon: <ClipboardList size={15} />, label: "Mis Órdenes" }, { id: "mis-stats", icon: <BarChart2 size={15} />, label: "Mis Stats" }];
 
   return (
     <div style={{
@@ -113,14 +114,20 @@ function Navbar({ user, onLogout, activeTab, setActiveTab }) {
         <div style={{ display: "flex", gap: "0.25rem", flex: 1 }}>
           {tabs.map(tab => (
             <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{
-              padding: "0.4rem 0.85rem",
-              background: activeTab === tab.id ? "rgba(0,122,255,0.1)" : "transparent",
-              color: activeTab === tab.id ? "#007AFF" : "#6e6e73",
-              border: "none", borderRadius: "8px",
-              fontWeight: activeTab === tab.id ? 600 : 400,
-              fontSize: "0.88rem", cursor: "pointer",
-              transition: "all 0.15s",
-            }}>{tab.label}</button>
+              adding: "0.4rem 0.85rem",
+  background: "transparent",
+  color: activeTab === tab.id ? "#007AFF" : "#6e6e73",
+  border: "none",
+  borderBottom: activeTab === tab.id ? "2px solid #007AFF" : "2px solid transparent",
+  borderRadius: "0",
+  fontWeight: activeTab === tab.id ? 600 : 400,
+  fontSize: "0.88rem",
+  cursor: "pointer",
+  transition: "all 0.15s",
+  paddingBottom: "0.5rem",
+}}>
+  {tab.label}
+</button>
           ))}
         </div>
 
@@ -283,6 +290,142 @@ function TablaOrdenes({ ordenes, tipo, onUpdateEnvio, esAdmin }) {
     </div>
   );
 }
+
+// == Dashboard ═══════════════════════════════════════════════
+function Dashboard({ user }) {
+  const [locales, setLocales] = useState([]);
+  const [deptos, setDeptos] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  function cargarDatos() {
+    const hoy = fechaHoy();
+    Promise.all([
+      fetch(SUPABASE_URL + "/rest/v1/ordenes_locales?fecha_orden=eq." + hoy + "&order=creado_en.desc", { headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY } }),
+      fetch(SUPABASE_URL + "/rest/v1/ordenes_departamentales?fecha_orden=eq." + hoy + "&order=creado_en.desc", { headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY } }),
+    ]).then(async ([resL, resD]) => {
+      setLocales(await resL.json());
+      setDeptos(await resD.json());
+      setLoading(false);
+    });
+  }
+
+  useEffect(() => {
+    cargarDatos();
+    const interval = setInterval(cargarDatos, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const totalL = locales.reduce((s, o) => s + parseMonto(o.total_pagar) - (o.costo_envio || 0), 0);
+  const totalD = deptos.reduce((s, o) => s + parseMonto(o.total_pagar) - ENVIO_DEPTO, 0);
+  const totalGeneral = totalL + totalD;
+  const ultimaOrden = [...locales, ...deptos].sort((a, b) => new Date(b.creado_en) - new Date(a.creado_en))[0];
+
+  const hora = new Date().getHours();
+  const saludo = hora < 12 ? "¡Buenos días" : hora < 18 ? "¡Buenas tardes" : "¡Buenas noches";
+
+  return (
+    <div style={{ maxWidth: 1200, margin: "0 auto", padding: "2rem 1.5rem", position: "relative" }}>
+
+      {/* Bolitas de fondo */}
+      <div style={{ position: "fixed", top: 80, left: "10%", width: 400, height: 400, borderRadius: "50%", background: "radial-gradient(circle, rgba(0,122,255,0.08) 0%, transparent 70%)", pointerEvents: "none", zIndex: 0 }} />
+      <div style={{ position: "fixed", top: 200, right: "5%", width: 300, height: 300, borderRadius: "50%", background: "radial-gradient(circle, rgba(52,199,89,0.07) 0%, transparent 70%)", pointerEvents: "none", zIndex: 0 }} />
+      <div style={{ position: "fixed", bottom: 100, left: "30%", width: 350, height: 350, borderRadius: "50%", background: "radial-gradient(circle, rgba(0,122,255,0.05) 0%, transparent 70%)", pointerEvents: "none", zIndex: 0 }} />
+
+      <div style={{ position: "relative", zIndex: 1 }}>
+        {/* Saludo */}
+        <div style={{ marginBottom: "2rem" }}>
+          <h1 style={{ fontSize: "2rem", fontWeight: 700, color: "#1d1d1f", margin: "0 0 0.35rem", letterSpacing: "-0.03em" }}>
+            {saludo}, {user.nombre.split(" ")[0]}! 👋
+          </h1>
+          <p style={{ color: "#6e6e73", fontSize: "1rem", margin: 0 }}>
+            ¿Cuántas ventas hicimos hoy? — se actualiza cada 30 segundos
+          </p>
+        </div>
+
+        {/* Cards principales */}
+        {loading ? (
+          <div style={{ textAlign: "center", color: "#6e6e73", padding: "3rem" }}>Cargando...</div>
+        ) : (
+          <>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem", marginBottom: "1.5rem" }}>
+              {[
+                { label: "Total órdenes hoy", value: (locales.length + deptos.length).toString(), sub: locales.length + " locales · " + deptos.length + " deptos", accent: "#007AFF" },
+                { label: "Total vendido hoy", value: formatMoney(totalGeneral), sub: "Neto sin envíos", accent: "#1d1d1f" },
+                { label: "Locales", value: formatMoney(totalL), sub: locales.length + " órdenes" },
+                { label: "Departamentales", value: formatMoney(totalD), sub: deptos.length + " órdenes · -$" + ENVIO_DEPTO + " c/u" },
+              ].map((card, i) => (
+                <div key={i} style={{ background: "#fff", borderRadius: "16px", padding: "1.25rem 1.5rem", boxShadow: "0 2px 12px rgba(0,0,0,0.04)" }}>
+                  <div style={{ fontSize: "0.72rem", fontWeight: 600, color: "#6e6e73", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.5rem" }}>{card.label}</div>
+                  <div style={{ fontSize: "1.75rem", fontWeight: 700, color: card.accent || "#1d1d1f", letterSpacing: "-0.02em" }}>{card.value}</div>
+                  <div style={{ fontSize: "0.78rem", color: "#6e6e73", marginTop: "0.25rem" }}>{card.sub}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Última orden */}
+            {ultimaOrden && (
+              <div style={{ background: "#fff", borderRadius: "16px", padding: "1.25rem 1.5rem", boxShadow: "0 2px 12px rgba(0,0,0,0.04)", marginBottom: "1.5rem" }}>
+                <div style={{ fontSize: "0.72rem", fontWeight: 600, color: "#6e6e73", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.75rem" }}>Última orden recibida</div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.5rem" }}>
+                  <div>
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.25rem" }}>
+                      <span style={{ background: "#007AFF", color: "#fff", borderRadius: "6px", padding: "0.2rem 0.5rem", fontSize: "0.75rem", fontWeight: 700 }}>Ficha #{ultimaOrden.numero_ficha}</span>
+                      <span style={{ color: "#1d1d1f", fontWeight: 600 }}>{ultimaOrden.nombre_cliente || "Sin nombre"}</span>
+                    </div>
+                    <div style={{ color: "#6e6e73", fontSize: "0.82rem" }}>{ultimaOrden.articulos?.slice(0, 60)}{ultimaOrden.articulos?.length > 60 ? "…" : ""}</div>
+                  </div>
+                  <div style={{ textAlign: "right" }}>
+                    <div style={{ fontSize: "1.3rem", fontWeight: 700, color: "#1d1d1f", letterSpacing: "-0.02em" }}>{ultimaOrden.total_pagar}</div>
+                    <div style={{ color: "#6e6e73", fontSize: "0.78rem" }}>{ultimaOrden.quien_ingresa}</div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Resumen por vendedor hoy */}
+            <div style={{ background: "#fff", borderRadius: "16px", padding: "1.25rem 1.5rem", boxShadow: "0 2px 12px rgba(0,0,0,0.04)" }}>
+              <div style={{ fontSize: "0.72rem", fontWeight: 600, color: "#6e6e73", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.75rem" }}>Ventas por vendedor hoy</div>
+              {(() => {
+                const porV = {};
+                locales.forEach(o => {
+                  const v = o.quien_ingresa || "Sin asignar";
+                  if (!porV[v]) porV[v] = { total: 0, ordenes: 0 };
+                  porV[v].total += parseMonto(o.total_pagar) - (o.costo_envio || 0);
+                  porV[v].ordenes++;
+                });
+                deptos.forEach(o => {
+                  const v = o.quien_ingresa || "Sin asignar";
+                  if (!porV[v]) porV[v] = { total: 0, ordenes: 0 };
+                  porV[v].total += parseMonto(o.total_pagar) - ENVIO_DEPTO;
+                  porV[v].ordenes++;
+                });
+                const vendedores = Object.entries(porV);
+                if (vendedores.length === 0) return <div style={{ color: "#6e6e73", fontSize: "0.85rem" }}>No hay órdenes hoy</div>;
+                return (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                    {vendedores.map(([nombre, data], i) => (
+                      <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.5rem 0", borderBottom: i < vendedores.length - 1 ? "1px solid #f5f5f7" : "none" }}>
+                        <div>
+                          <span style={{ fontWeight: 500, color: "#1d1d1f", fontSize: "0.88rem" }}>{nombre}</span>
+                          <span style={{ color: "#6e6e73", fontSize: "0.78rem", marginLeft: "0.5rem" }}>{data.ordenes} orden{data.ordenes !== 1 ? "es" : ""}</span>
+                        </div>
+                        <div style={{ textAlign: "right" }}>
+                          <span style={{ fontWeight: 700, color: "#007AFF", fontSize: "0.95rem" }}>{formatMoney(data.total)}</span>
+                          <span style={{ color: "#34C759", fontSize: "0.78rem", marginLeft: "0.5rem" }}>+{formatMoney(data.total * COMISION)}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 
 // ══ AdminOrdenes ══════════════════════════════════════════
 function AdminOrdenes() {
@@ -649,7 +792,7 @@ export default function App() {
   function handleLogin(u) {
     setUser(u);
     localStorage.setItem("panel_user", JSON.stringify(u));
-    setActiveTab(u.rol === "admin" ? "ordenes" : "mis-ordenes");
+    setActiveTab(u.rol === "admin" ? "dashboard" : "mis-ordenes");
   }
 
   function handleLogout() {
@@ -658,13 +801,14 @@ export default function App() {
   }
 
   useEffect(() => {
-    if (user) setActiveTab(user.rol === "admin" ? "ordenes" : "mis-ordenes");
+    if (user) setActiveTab(user.rol === "admin" ? "dashboard" : "mis-ordenes");
   }, []);
 
   if (!user) return <Login onLogin={handleLogin} />;
 
   function renderContent() {
     if (user.rol === "admin") {
+      if(activeTab === "dashboard") return <Dashboard user={user} />;
       if (activeTab === "ordenes") return <AdminOrdenes />;
       if (activeTab === "estadisticas") return <AdminEstadisticas />;
       if (activeTab === "vendedores") return <AdminVendedores />;
