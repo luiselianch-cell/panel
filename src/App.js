@@ -56,7 +56,7 @@ function Login({ onLogin }) {
       width: "100%",
     }}>
       <div style={{ width: "100%", maxWidth: 360, textAlign: "center" }}>
-        <img src={LOGO_URL} alt="Tecno Gadget" style={{ width: 120, height: 40, borderRadius: "6px", marginBottom: "1.5rem", display: "block", margin: "0 auto 1.5rem" }} />
+        <img src={LOGO_URL} alt="Tecno Gadget" style={{ width: 120, borderRadius: "6px", marginBottom: "1.5rem", display: "block", margin: "0 auto 1.5rem" }} />
         <h1 style={{ fontSize: "1.75rem", fontWeight: 700, color: "#1d1d1f", margin: "0 0 0.25rem" }}>Panel de Control</h1>
         <p style={{ color: "#6e6e73", fontSize: "0.9rem", margin: "0 0 2rem" }}>Tecno Gadget SV</p>
 
