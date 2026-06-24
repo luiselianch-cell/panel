@@ -14,11 +14,7 @@ const LOGO_URL = "/Logo-banner.png";
 
 const USUARIOS = [
   { usuario: "admin", password: "admin2026", rol: "admin", nombre: "Administrador" },
-  { usuario: "fer", password: "fer2026", rol: "vendedor", nombre: "Tecno Gadget - Fer" },
-  { usuario: "jefferson", password: "jeff2026", rol: "vendedor", nombre: "Tecno Gadget - Jefferson" },
-  { usuario: "wendy", password: "wendy2026", rol: "vendedor", nombre: "Tecno Gadget - Wendy" },
-  { usuario: "liss", password: "liss2026", rol: "vendedor", nombre: "Tecno Gadget - Liss" },
-  { usuario: "isa", password: "isa2026", rol: "vendedor", nombre: "Tecno Gadget - Isa" },
+  { usuario: "Maressa", password: "maressa26", rol: "vendedor", nombre: "Maressa" },
 ];
 
 const CHART_COLORS = ["#007AFF", "#34C759", "#FF9500", "#FF2D55", "#5856D6"];
