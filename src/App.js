@@ -333,14 +333,13 @@ function TablaOrdenes({ ordenes, tipo, onUpdateEnvio, esAdmin }) {
   type="number"
   step="0.01"
   min="0"
-  value={envios[o.id] || 0}
-  onChange={e => handleEnvioChange(o.id, e.target.value)}
+  defaultValue={envios[o.id] || 0}
   onFocus={e => e.target.style.border = "1.5px solid #007AFF"}
   onBlur={e => {
     e.target.style.border = "1.5px solid #e5e5ea";
+    handleEnvioChange(o.id, e.target.value);
     handleEnvioBlur(o.id, e.target.value, "local");
   }}
-  
   style={{
     width: 70,
     padding: "0.35rem 0.6rem",
@@ -353,7 +352,6 @@ function TablaOrdenes({ ordenes, tipo, onUpdateEnvio, esAdmin }) {
     fontFamily: "'Inter', sans-serif",
     fontWeight: 500,
     textAlign: "center",
-    transition: "border 0.15s",
   }}
 />
                   ) : (
