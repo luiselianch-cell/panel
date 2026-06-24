@@ -283,12 +283,234 @@ function StatCard({ label, value, sub, accent }) {
   );
 }
 
+// ══ Modal Editar Orden ════════════════════════════════════
+function ModalEditar({ orden, tipo, onClose, onSave }) {
+  const [form, setForm] = useState({ ...orden });
+  const [saving, setSaving] = useState(false);
+
+  const MUNICIPIOS_LOCAL = ["SAN SALVADOR", "SANTA ANA", "SAN MIGUEL", "APOPA", "SOYAPANGO", "MEJICANOS", "SANTA TECLA", "CIUDAD DELGADO", "CUSCATANCINGO", "ILOPANGO", "TONACATEPEQUE", "ANTIGUO CUSCATLAN", "AYUTUXTEPEQUE", "Otro"];
+  const DEPARTAMENTOS = ["SANTA ANA", "SAN MIGUEL", "AHUACHAPAN", "CABAÑAS", "CHALATENANGO", "CUSCATLAN", "LA LIBERTAD", "LA UNION", "LA PAZ", "MORAZAN", "SONSONATE", "SAN SALVADOR", "SAN VICENTE", "USULUTAN"];
+  const FORMAS_PAGO = ["Efectivo", "Transferencia", "Tarjeta", "PayPal", "Contraentrega", "Otro"];
+  const TIPOS_COMPROBANTE = ["Ticket", "Factura", "Factura Consumidor Final", "Sin comprobante"];
+  const PERFILES = ["Instagram", "Facebook", "TikTok", "WhatsApp Principal", "WhatsApp Secundario", "Inbox Pagina FB", "Referido", "Otro"];
+  const QUIEN_INGRESA = ["Tecno Gadget - Fer", "Tecno Gadget - Jefferson", "Tecno Gadget - Wendy", "Tecno Gadget - Liss", "Tecno Gadget - Isa", "Tecno Gadget - Josue"];
+  const TIPOS_ENTREGA = ["Lugar de residencia / trabajo", "Punto de encuentro (Gasolinera, parque, centro comercial etc)", "En agencia de mensajeria (Cliente pasará a recoger)"];
+
+  function handleChange(e) {
+    const { name, value } = e.target;
+    setForm(p => ({ ...p, [name]: value }));
+  }
+
+  async function handleSave() {
+    setSaving(true);
+    const tabla = tipo === "local" ? "ordenes_locales" : "ordenes_departamentales";
+    await fetch(SUPABASE_URL + "/rest/v1/" + tabla + "?id=eq." + orden.id, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: SUPABASE_KEY,
+        Authorization: "Bearer " + SUPABASE_KEY,
+      },
+      body: JSON.stringify(form),
+    });
+    setSaving(false);
+    onSave();
+    onClose();
+  }
+
+  const inputStyle = {
+    width: "100%", padding: "0.6rem 0.85rem",
+    border: "1px solid #e5e5ea", borderRadius: "8px",
+    fontSize: "0.88rem", outline: "none",
+    background: "#f5f5f7", color: "#1d1d1f",
+    fontFamily: "'Inter', sans-serif",
+    boxSizing: "border-box",
+  };
+
+  const labelStyle = {
+    display: "block", fontSize: "0.72rem", fontWeight: 600,
+    color: "#6e6e73", textTransform: "uppercase",
+    letterSpacing: "0.05em", marginBottom: "0.35rem",
+  };
+
+  const fieldStyle = { marginBottom: "1rem" };
+
+  return (
+    <div style={{
+      position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+      background: "rgba(0,0,0,0.4)", backdropFilter: "blur(4px)",
+      zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center",
+      padding: "1rem", fontFamily: "'Inter', sans-serif",
+    }} onClick={onClose}>
+      <div style={{
+        background: "#fff", borderRadius: "20px",
+        padding: "1.5rem", width: "100%", maxWidth: 560,
+        maxHeight: "90vh", overflowY: "auto",
+        boxShadow: "0 20px 60px rgba(0,0,0,0.2)",
+      }} onClick={e => e.stopPropagation()}>
+
+        {/* Header */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
+          <div>
+            <h2 style={{ fontSize: "1.2rem", fontWeight: 700, color: "#1d1d1f", margin: 0 }}>Editar Orden</h2>
+            <p style={{ color: "#6e6e73", fontSize: "0.82rem", margin: "0.2rem 0 0" }}>Ficha #{orden.numero_ficha} — {tipo === "local" ? "Local" : "Departamental"}</p>
+          </div>
+          <button onClick={onClose} style={{ background: "#f5f5f7", border: "none", borderRadius: "50%", width: 32, height: 32, cursor: "pointer", fontSize: "1rem", display: "flex", alignItems: "center", justifyContent: "center", color: "#6e6e73" }}>✕</button>
+        </div>
+
+        {/* Estado */}
+        <div style={{ ...fieldStyle, padding: "0.75rem 1rem", background: form.estado === "cancelada" ? "#fff2f2" : "#f0fff4", borderRadius: "10px", marginBottom: "1.25rem", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <span style={{ fontSize: "0.85rem", fontWeight: 600, color: form.estado === "cancelada" ? "#ff3b30" : "#34C759" }}>
+            {form.estado === "cancelada" ? "❌ Cancelada" : "✅ Completada"}
+          </span>
+          <button onClick={() => setForm(p => ({ ...p, estado: p.estado === "cancelada" ? "completada" : "cancelada" }))}
+            style={{
+              padding: "0.4rem 0.85rem", borderRadius: "8px", border: "none", cursor: "pointer",
+              background: form.estado === "cancelada" ? "#34C759" : "#ff3b30",
+              color: "#fff", fontSize: "0.8rem", fontWeight: 600,
+            }}>
+            {form.estado === "cancelada" ? "Marcar completada" : "Marcar cancelada"}
+          </button>
+        </div>
+
+        {/* Campos */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 1rem" }}>
+          <div style={fieldStyle}>
+            <label style={labelStyle}>Fecha</label>
+            <input type="date" name="fecha_orden" value={form.fecha_orden || ""} onChange={handleChange} style={inputStyle} />
+          </div>
+          <div style={fieldStyle}>
+            <label style={labelStyle}>Total a pagar</label>
+            <input name="total_pagar" value={form.total_pagar || ""} onChange={handleChange} style={inputStyle} placeholder="$0.00" />
+          </div>
+        </div>
+
+        <div style={fieldStyle}>
+          <label style={labelStyle}>Artículos</label>
+          <textarea name="articulos" value={form.articulos || ""} onChange={handleChange} style={{ ...inputStyle, resize: "vertical", minHeight: 72 }} />
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 1rem" }}>
+          <div style={fieldStyle}>
+            <label style={labelStyle}>Nombre del cliente</label>
+            <input name="nombre_cliente" value={form.nombre_cliente || ""} onChange={handleChange} style={inputStyle} />
+          </div>
+          <div style={fieldStyle}>
+            <label style={labelStyle}>Número de contacto</label>
+            <input name="numero_contacto" value={form.numero_contacto || ""} onChange={handleChange} style={inputStyle} />
+          </div>
+        </div>
+
+        {tipo === "local" ? (
+          <>
+            <div style={fieldStyle}>
+              <label style={labelStyle}>Municipio</label>
+              <select name="municipio" value={form.municipio || ""} onChange={handleChange} style={inputStyle}>
+                {MUNICIPIOS_LOCAL.map(m => <option key={m} value={m}>{m}</option>)}
+              </select>
+            </div>
+            <div style={fieldStyle}>
+              <label style={labelStyle}>Relación con lugar de entrega</label>
+              <select name="relacion_entrega" value={form.relacion_entrega || ""} onChange={handleChange} style={inputStyle}>
+                {["Lugar de residencia del cliente", "Lugar de trabajo del cliente", "Lugar de estudio del cliente", "Cliente visitará el lugar durante unas horas", "Cliente llegará al lugar para recibir la orden"].map(r => <option key={r} value={r}>{r}</option>)}
+              </select>
+            </div>
+          </>
+        ) : (
+          <>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 1rem" }}>
+              <div style={fieldStyle}>
+                <label style={labelStyle}>Tipo de entrega</label>
+                <select name="tipo_entrega" value={form.tipo_entrega || ""} onChange={handleChange} style={inputStyle}>
+                  {TIPOS_ENTREGA.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </div>
+              <div style={fieldStyle}>
+                <label style={labelStyle}>Departamento</label>
+                <select name="departamento" value={form.departamento || ""} onChange={handleChange} style={inputStyle}>
+                  {DEPARTAMENTOS.map(d => <option key={d} value={d}>{d}</option>)}
+                </select>
+              </div>
+            </div>
+            <div style={fieldStyle}>
+              <label style={labelStyle}>Municipio</label>
+              <input name="municipio" value={form.municipio || ""} onChange={handleChange} style={inputStyle} />
+            </div>
+          </>
+        )}
+
+        <div style={fieldStyle}>
+          <label style={labelStyle}>Dirección de entrega</label>
+          <textarea name="direccion_entrega" value={form.direccion_entrega || ""} onChange={handleChange} style={{ ...inputStyle, resize: "vertical", minHeight: 64 }} />
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 1rem" }}>
+          <div style={fieldStyle}>
+            <label style={labelStyle}>Forma de pago</label>
+            <select name="forma_pago" value={form.forma_pago || ""} onChange={handleChange} style={inputStyle}>
+              {FORMAS_PAGO.map(f => <option key={f} value={f}>{f}</option>)}
+            </select>
+          </div>
+          <div style={fieldStyle}>
+            <label style={labelStyle}>Tipo de comprobante</label>
+            <select name="tipo_comprobante" value={form.tipo_comprobante || ""} onChange={handleChange} style={inputStyle}>
+              {TIPOS_COMPROBANTE.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </div>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 1rem" }}>
+          <div style={fieldStyle}>
+            <label style={labelStyle}>Perfil</label>
+            <select name={tipo === "local" ? "perfil_salio_1" : "perfil_salio"} value={form.perfil_salio_1 || form.perfil_salio || ""} onChange={handleChange} style={inputStyle}>
+              {PERFILES.map(p => <option key={p} value={p}>{p}</option>)}
+            </select>
+          </div>
+          <div style={fieldStyle}>
+            <label style={labelStyle}>Quién ingresa</label>
+            <select name="quien_ingresa" value={form.quien_ingresa || ""} onChange={handleChange} style={inputStyle}>
+              {QUIEN_INGRESA.map(q => <option key={q} value={q}>{q}</option>)}
+            </select>
+          </div>
+        </div>
+
+        <div style={fieldStyle}>
+          <label style={labelStyle}>Comentario libre</label>
+          <textarea name="comentario_libre" value={form.comentario_libre || ""} onChange={handleChange} style={{ ...inputStyle, resize: "vertical", minHeight: 64 }} />
+        </div>
+
+        {/* Botones */}
+        <div style={{ display: "flex", gap: "0.75rem", marginTop: "0.5rem" }}>
+          <button onClick={onClose} style={{
+            flex: 1, padding: "0.75rem", background: "#f5f5f7", color: "#6e6e73",
+            border: "none", borderRadius: "10px", fontWeight: 600, fontSize: "0.9rem", cursor: "pointer",
+            fontFamily: "'Inter', sans-serif",
+          }}>Cancelar</button>
+          <button onClick={handleSave} disabled={saving} style={{
+            flex: 2, padding: "0.75rem",
+            background: saving ? "#e5e5ea" : "#007AFF",
+            color: saving ? "#6e6e73" : "#fff",
+            border: "none", borderRadius: "10px", fontWeight: 600, fontSize: "0.9rem", cursor: saving ? "default" : "pointer",
+            fontFamily: "'Inter', sans-serif",
+          }}>
+            {saving ? "Guardando..." : "Guardar cambios"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+
 // ══ TablaOrdenes ══════════════════════════════════════════
 function TablaOrdenes({ ordenes, tipo, onUpdateEnvio, esAdmin }) {
   const [envios, setEnvios] = useState(() => {
     const obj = {};
     ordenes.forEach(o => { obj[o.id] = o.costo_envio || 0; });
     return obj;
+  const [ordenEditar, setOrdenEditar] = useState(null);
+  const [tipoEditar, setTipoEditar] = useState(null);
   });
 
   function handleEnvioChange(id, valor) {
@@ -304,7 +526,7 @@ function TablaOrdenes({ ordenes, tipo, onUpdateEnvio, esAdmin }) {
       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.83rem" }}>
         <thead>
           <tr style={{ borderBottom: "1px solid #f5f5f7" }}>
-            {["Ficha", "Fecha", "Cliente", "Artículos", tipo === "departamental" ? "Depto" : "Municipio", "Total", "Envío", "Neto", "Perfil", "Vendedor"].map(h => (
+            {["Ficha", "Fecha", "Cliente", "Artículos", tipo === "departamental" ? "Depto" : "Municipio", "Total", "Envío", "Neto", "Perfil", "Vendedor", "Acciones"].map(h => (
               <th key={h} style={{ padding: "0.75rem 1rem", textAlign: "left", color: "#6e6e73", fontWeight: 600, fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "0.05em", whiteSpace: "nowrap" }}>{h}</th>
             ))}
           </tr>
@@ -360,11 +582,26 @@ function TablaOrdenes({ ordenes, tipo, onUpdateEnvio, esAdmin }) {
                 <td style={{ padding: "0.75rem 1rem", fontWeight: 600, color: "#34C759" }}>{formatMoney(neto)}</td>
                 <td style={{ padding: "0.75rem 1rem", color: "#6e6e73" }}>{o.perfil_salio_1 || o.perfil_salio || "-"}</td>
                 <td style={{ padding: "0.75rem 1rem", color: "#6e6e73" }}>{o.quien_ingresa}</td>
+                <td style={{ padding: "0.75rem 1rem" }}>
+  <button onClick={() => { setOrdenEditar(o); setTipoEditar(tipo); }} style={{
+    padding: "0.3rem 0.75rem", background: "#f5f5f7",
+    border: "none", borderRadius: "6px", fontSize: "0.78rem",
+    cursor: "pointer", color: "#007AFF", fontWeight: 600,
+  }}>Editar</button>
+</td>
               </tr>
             );
           })}
         </tbody>
       </table>
+      {ordenEditar && (
+  <ModalEditar
+    orden={ordenEditar}
+    tipo={tipoEditar}
+    onClose={() => setOrdenEditar(null)}
+    onSave={() => setOrdenEditar(null)}
+  />
+)}
     </div>
   );
 }
