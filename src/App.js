@@ -419,7 +419,7 @@ function Dashboard({ user }) {
             {saludo}, {user.nombre.split(" ")[0]}! 👋
           </h1>
           <p style={{ color: "#6e6e73", fontSize: "1rem", margin: 0 }}>
-            ¿Cuántas ventas hicimos hoy? — se actualiza cada 30 segundos
+            ¿Cuántas ventas hicimos hoy?
           </p>
         </div>
 
@@ -742,7 +742,7 @@ function AdminVendedores() {
   const porVendedor = {};
   locales.forEach(o => {
     const v = o.quien_ingresa || "Sin asignar";
-    if (v.includes("TecnoGadget")) return; // Excluir órdenes de TecnoGadget
+    if (v.includes("Tecno Gadget")) return; // Excluir órdenes de Tecno Gadget
     if (v.includes("Caleb (Venta Propia)")) return; // Excluir órdenes de Caleb
     if (!porVendedor[v]) porVendedor[v] = { vendedor: v, ordenes: 0, total: 0 };
     porVendedor[v].ordenes++;
