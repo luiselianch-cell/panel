@@ -131,7 +131,7 @@ function Navbar({ user, onLogout, activeTab, setActiveTab }) {
         <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 1rem", display: "flex", alignItems: "center", height: 52, gap: "1rem" }}>
 
           {/* Logo */}
-          <img src={LOGO_URL} alt="Tecno Gadget" style={{ height: 28, borderRadius: "6px", flexShrink: 0 }} />
+          <img src={LOGO_URL} alt="Tecno Gadget" style={{ height: 40, borderRadius: "6px", flexShrink: 0 }} />
 
           {/* Pestañas — solo desktop */}
           {!isMobile && (
