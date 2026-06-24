@@ -505,12 +505,13 @@ function ModalEditar({ orden, tipo, onClose, onSave }) {
 
 // ══ TablaOrdenes ══════════════════════════════════════════
 function TablaOrdenes({ ordenes, tipo, onUpdateEnvio, esAdmin }) {
+  const [ordenEditar, setOrdenEditar] = useState(null);
+  const [tipoEditar, setTipoEditar] = useState(null);
   const [envios, setEnvios] = useState(() => {
     const obj = {};
     ordenes.forEach(o => { obj[o.id] = o.costo_envio || 0; });
     return obj;
-  const [ordenEditar, setOrdenEditar] = useState(null);
-  const [tipoEditar, setTipoEditar] = useState(null);
+  
   });
 
   function handleEnvioChange(id, valor) {
