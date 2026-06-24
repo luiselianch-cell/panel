@@ -10,7 +10,7 @@ const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL;
 const SUPABASE_KEY = process.env.REACT_APP_SUPABASE_KEY;
 const ENVIO_DEPTO = 3.39;
 const COMISION = 0.10;
-const LOGO_URL = "/logo.png";
+const LOGO_URL = "/logo-banner.png";
 
 const USUARIOS = [
   { usuario: "admin", password: "admin2026", rol: "admin", nombre: "Administrador" },
@@ -56,11 +56,11 @@ function Login({ onLogin }) {
       width: "100%",
     }}>
       <div style={{ width: "100%", maxWidth: 360, textAlign: "center" }}>
-        <img src={LOGO_URL} alt="Tecno Gadget" style={{ width: 72, height: 72, borderRadius: "18px", marginBottom: "1.5rem", display: "block", margin: "0 auto 1.5rem", boxShadow: "0 4px 16px rgba(0,0,0,0.12)" }} />
+        <img src={LOGO_URL} alt="Tecno Gadget" style={{ width: 120, height: 40, borderRadius: "6px", marginBottom: "1.5rem", display: "block", margin: "0 auto 1.5rem" }} />
         <h1 style={{ fontSize: "1.75rem", fontWeight: 700, color: "#1d1d1f", margin: "0 0 0.25rem" }}>Panel de Control</h1>
         <p style={{ color: "#6e6e73", fontSize: "0.9rem", margin: "0 0 2rem" }}>Tecno Gadget SV</p>
 
-        <div style={{ background: "#fff", borderRadius: "18px", padding: "1.75rem", boxShadow: "0 2px 20px rgba(0,0,0,0.06)" }}>
+        <div style={{ background: "#fff", borderRadius: "18px", padding: "1.75rem" }}>
           {error && (
             <div style={{ background: "#fff2f2", borderRadius: "10px", padding: "0.7rem 1rem", color: "#ff3b30", fontSize: "0.85rem", marginBottom: "1.25rem", textAlign: "left" }}>
               {error}
@@ -108,7 +108,7 @@ function Navbar({ user, onLogout, activeTab, setActiveTab }) {
       fontFamily: "'Inter', sans-serif",
     }}>
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 1.5rem", display: "flex", alignItems: "center", height: 52, gap: "2rem" }}>
-        <img src={LOGO_URL} alt="Tecno Gadget" style={{ width: 30, height: 30, borderRadius: "8px" }} />
+        <img src={LOGO_URL} alt="Tecno Gadget" style={{ width: 120, borderRadius: "6px" }} />
 
         <div style={{ display: "flex", gap: "0.25rem", flex: 1 }}>
           {tabs.map(tab => (
@@ -161,7 +161,6 @@ function Navbar({ user, onLogout, activeTab, setActiveTab }) {
             <div style={{
               position: "absolute", top: "calc(100% + 8px)", right: 0,
               background: "#fff", borderRadius: "12px",
-              boxShadow: "0 8px 30px rgba(0,0,0,0.12)", padding: "0.5rem",
               minWidth: 180, zIndex: 200,
             }}>
               <div style={{ padding: "0.5rem 0.75rem", borderBottom: "1px solid #f5f5f7", marginBottom: "0.25rem" }}>
@@ -243,12 +242,15 @@ function TablaOrdenes({ ordenes, tipo, onUpdateEnvio, esAdmin }) {
                     <span style={{ color: "#ff3b30", fontSize: "0.82rem" }}>-${ENVIO_DEPTO}</span>
                   ) : esAdmin ? (
                     <input
-  type="text"
-  inputMode="numeric"
-  pattern="[0-9]*"
+  type="number"
+  step="0.01"
+  min="0"
   value={envios[o.id] || 0}
-  onChange={e => {
-    handleEnvioChange(o.id, e.target.value);
+  onChange={e => handleEnvioChange(o.id, e.target.value)}
+  onFocus={e => e.target.style.border = "1.5px solid #007AFF"}
+  onBlur={e => {
+    e.target.style.border = "1.5px solid #e5e5ea";
+    handleEnvioBlur(o.id, e.target.value, "local");
   }}
   
   style={{
