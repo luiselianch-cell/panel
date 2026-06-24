@@ -267,11 +267,6 @@ function TablaOrdenes({ ordenes, tipo, onUpdateEnvio, esAdmin }) {
     textAlign: "center",
     transition: "border 0.15s",
   }}
-  onFocus={e => e.target.style.border = "1.5px solid #007AFF"}
-  onBlur={e => {
-    e.target.style.border = "1.5px solid #e5e5ea";
-    handleEnvioBlur(o.id, e.target.value, "local");
-  }}
 />
                   ) : (
                     <span style={{ color: "#ff3b30", fontSize: "0.82rem" }}>-${(envios[o.id] || 0).toFixed(2)}</span>
