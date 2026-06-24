@@ -521,6 +521,16 @@ function TablaOrdenes({ ordenes, tipo, onUpdateEnvio, esAdmin }) {
   function handleEnvioBlur(id, valor, tipo) {
     onUpdateEnvio && onUpdateEnvio(id, valor, tipo);
   }
+  
+  async function cancelarOrden(id, tipo) {
+  const tabla = tipo === "local" ? "ordenes_locales" : "ordenes_departamentales";
+  await fetch(SUPABASE_URL + "/rest/v1/" + tabla + "?id=eq." + id, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
+    body: JSON.stringify({ estado: "cancelada" }),
+  });
+  onSave && onSave();
+}
 
   return (
     <div style={{ overflowX: "auto" }}>
@@ -590,6 +600,16 @@ function TablaOrdenes({ ordenes, tipo, onUpdateEnvio, esAdmin }) {
     cursor: "pointer", color: "#007AFF", fontWeight: 600,
   }}>Editar</button>
 </td>
+      
+      <td style={{ padding: "0.75rem 1rem", display: "flex", gap: "0.5rem", alignItems: "center" }}>
+  {o.estado === "cancelada" && (
+    <span style={{ background: "#fff2f2", color: "#ff3b30", borderRadius: "6px", padding: "0.2rem 0.5rem", fontSize: "0.72rem", fontWeight: 600 }}>Cancelada</span>
+  )}
+  <button onClick={() => { setOrdenEditar(o); setTipoEditar(tipo); }} style={{ padding: "0.3rem 0.75rem", background: "#f5f5f7", border: "none", borderRadius: "6px", fontSize: "0.78rem", cursor: "pointer", color: "#007AFF", fontWeight: 600 }}>Editar</button>
+  <button onClick={() => cancelarOrden(o.id, tipo)} style={{ padding: "0.3rem 0.75rem", background: o.estado === "cancelada" ? "#f0fff4" : "#fff2f2", border: "none", borderRadius: "6px", fontSize: "0.78rem", cursor: "pointer", color: o.estado === "cancelada" ? "#34C759" : "#ff3b30", fontWeight: 600 }}>
+    {o.estado === "cancelada" ? "Reactivar" : "Cancelar"}
+  </button>
+</td>
               </tr>
             );
           })}
@@ -600,7 +620,7 @@ function TablaOrdenes({ ordenes, tipo, onUpdateEnvio, esAdmin }) {
     orden={ordenEditar}
     tipo={tipoEditar}
     onClose={() => setOrdenEditar(null)}
-    onSave={() => setOrdenEditar(null)}
+    onSave={() => {setOrdenEditar(null); onSave && onSave(); }}
   />
 )}
     </div>
@@ -831,8 +851,8 @@ function AdminOrdenes() {
         </div>
         {loading ? <div style={{ padding: "3rem", textAlign: "center", color: "#6e6e73" }}>Cargando...</div>
           : tab === "locales"
-          ? <TablaOrdenes ordenes={lF} tipo="local" onUpdateEnvio={actualizarEnvio} esAdmin={true} />
-          : <TablaOrdenes ordenes={dF} tipo="departamental" esAdmin={true} />}
+          ? <TablaOrdenes ordenes={lF} tipo="local" onUpdateEnvio={actualizarEnvio} esAdmin={true} onSave={cargarOrdenes}/>
+          : <TablaOrdenes ordenes={dF} tipo="departamental" esAdmin={true} onSave={cargarOrdenes} />}
       </div>
     </div>
   );
