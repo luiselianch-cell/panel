@@ -238,7 +238,8 @@ function TablaOrdenes({ ordenes, tipo, onUpdateEnvio, esAdmin }) {
                   ) : esAdmin ? (
                     <input
   type="text"
-  inputMode="decimal"
+  inputMode="numeric"
+  pattern="[0-9]*"
   value={envios[o.id] || 0}
   onChange={e => {
     handleEnvioChange(o.id, e.target.value);
@@ -634,15 +635,28 @@ function VendedorPanel({ user }) {
   );
 }
 
-// ══ App ═══════════════════════════════════════════════════
+// ══ App ═════════════════════════════════════════════════
 export default function App() {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(() => {
+    const saved = localStorage.getItem("panel_user");
+    return saved ? JSON.parse(saved) : null;
+  });
   const [activeTab, setActiveTab] = useState("");
 
   function handleLogin(u) {
     setUser(u);
+    localStorage.setItem("panel_user", JSON.stringify(u));
     setActiveTab(u.rol === "admin" ? "ordenes" : "mis-ordenes");
   }
+
+  function handleLogout() {
+    setUser(null);
+    localStorage.removeItem("panel_user");
+  }
+
+  useEffect(() => {
+    if (user) setActiveTab(user.rol === "admin" ? "ordenes" : "mis-ordenes");
+  }, []);
 
   if (!user) return <Login onLogin={handleLogin} />;
 
@@ -658,7 +672,7 @@ export default function App() {
 
   return (
     <div style={{ minHeight: "100vh", background: "#f5f5f7", fontFamily: "'Inter', sans-serif" }}>
-      <Navbar user={user} onLogout={() => setUser(null)} activeTab={activeTab} setActiveTab={setActiveTab} />
+      <Navbar user={user} onLogout={handleLogout} activeTab={activeTab} setActiveTab={setActiveTab} />
       {renderContent()}
     </div>
   );
