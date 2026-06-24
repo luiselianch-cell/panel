@@ -593,18 +593,13 @@ function TablaOrdenes({ ordenes, tipo, onUpdateEnvio, esAdmin, onSave }) {
                 <td style={{ padding: "0.75rem 1rem", fontWeight: 600, color: "#34C759" }}>{formatMoney(neto)}</td>
                 <td style={{ padding: "0.75rem 1rem", color: "#6e6e73" }}>{o.perfil_salio_1 || o.perfil_salio || "-"}</td>
                 <td style={{ padding: "0.75rem 1rem", color: "#6e6e73" }}>{o.quien_ingresa}</td>
-                <td style={{ padding: "0.75rem 1rem" }}>
-  <button onClick={() => { setOrdenEditar(o); setTipoEditar(tipo); }} style={{
-    padding: "0.3rem 0.75rem", background: "#f5f5f7",
-    border: "none", borderRadius: "6px", fontSize: "0.78rem",
-    cursor: "pointer", color: "#007AFF", fontWeight: 600,
-  }}>Editar</button>
-</td>
-      
+
       <td style={{ padding: "0.75rem 1rem", display: "flex", gap: "0.5rem", alignItems: "center" }}>
-  {o.estado === "cancelada" && (
-    <span style={{ background: "#fff2f2", color: "#ff3b30", borderRadius: "6px", padding: "0.2rem 0.5rem", fontSize: "0.72rem", fontWeight: 600 }}>Cancelada</span>
-  )}
+  {o.estado !== "cancelada" && (
+  <button onClick={() => cancelarOrden(o.id, tipo)} style={{ padding: "0.3rem 0.75rem", background: "#fff0f0", border: "none", borderRadius: "6px", fontSize: "0.78rem", color: "#ff3b30", fontWeight: 600, cursor: "pointer" }}>
+    Cancelar
+  </button>
+)}
   <button onClick={() => { setOrdenEditar(o); setTipoEditar(tipo); }} style={{ padding: "0.3rem 0.75rem", background: "#f5f5f7", border: "none", borderRadius: "6px", fontSize: "0.78rem", cursor: "pointer", color: "#007AFF", fontWeight: 600 }}>Editar</button>
   <button onClick={() => cancelarOrden(o.id, tipo)} style={{ padding: "0.3rem 0.75rem", background: o.estado === "cancelada" ? "#f0fff4" : "#fff2f2", border: "none", borderRadius: "6px", fontSize: "0.78rem", cursor: "pointer", color: o.estado === "cancelada" ? "#34C759" : "#ff3b30", fontWeight: 600 }}>
     {o.estado === "cancelada" ? "Reactivar" : "Cancelar"}
