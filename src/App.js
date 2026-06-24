@@ -121,7 +121,7 @@ function Navbar({ user, onLogout, activeTab, setActiveTab }) {
             }}>{tab.label}</button>
           ))}
         </div>
-        
+
          <input
   placeholder="🔍 Buscar ficha o vendedor..."
   style={{
@@ -241,8 +241,7 @@ function TablaOrdenes({ ordenes, tipo, onUpdateEnvio, esAdmin }) {
   inputMode="decimal"
   value={envios[o.id] || 0}
   onChange={e => {
-    const val = e.target.value.replace(/[^0-9.]/g, "");
-    handleEnvioChange(o.id, val);
+    handleEnvioChange(o.id, e.target.value);
   }}
   
   style={{
