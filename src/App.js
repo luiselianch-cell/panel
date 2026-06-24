@@ -600,10 +600,7 @@ function TablaOrdenes({ ordenes, tipo, onUpdateEnvio, esAdmin, onSave }) {
     Cancelar
   </button>
 )}
-  <button onClick={() => { setOrdenEditar(o); setTipoEditar(tipo); }} style={{ padding: "0.3rem 0.75rem", background: "#f5f5f7", border: "none", borderRadius: "6px", fontSize: "0.78rem", cursor: "pointer", color: "#007AFF", fontWeight: 600 }}>Editar</button>
-  <button onClick={() => cancelarOrden(o.id, tipo)} style={{ padding: "0.3rem 0.75rem", background: o.estado === "cancelada" ? "#f0fff4" : "#fff2f2", border: "none", borderRadius: "6px", fontSize: "0.78rem", cursor: "pointer", color: o.estado === "cancelada" ? "#34C759" : "#ff3b30", fontWeight: 600 }}>
-    {o.estado === "cancelada" ? "Reactivar" : "Cancelar"}
-  </button>
+
 </td>
               </tr>
             );
