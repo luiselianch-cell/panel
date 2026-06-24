@@ -48,15 +48,19 @@ function Login({ onLogin }) {
 
   return (
     <div style={{
-      minHeight: "100vh", background: "#f5f5f7",
-      display: "flex", alignItems: "center", justifyContent: "center",
-      fontFamily: "'Inter', sans-serif",
-      padding: "1rem",
-      overflow: "hidden",
-      position: "fixed",
-      width: "100%",
-    }}>
-      <div style={{ width: "100%", maxWidth: 360, textAlign: "center" }}>
+  minHeight: "100vh",
+  background: "#f5f5f7",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  fontFamily: "'Inter', sans-serif",
+  padding: "1rem",
+  overflow: "hidden",
+  position: "fixed",
+  width: "100%",
+  boxSizing: "border-box",
+}}>
+      <div style={{ width: "100%", maxWidth: 360, textAlign: "center", padding: "0 1rem", boxSizing: "border-box" }}>
         <img src={LOGO_URL} alt="Tecno Gadget" style={{ width: 280, borderRadius: "6px", marginBottom: "1.5rem", display: "block", margin: "0 auto 1.5rem" }} />
         <h1 style={{ fontSize: "1.75rem", fontWeight: 700, color: "#1d1d1f", margin: "0 0 0.25rem" }}>Panel de Control</h1>
         <p style={{ color: "#6e6e73", fontSize: "0.9rem", margin: "0 0 2rem" }}>Tecno Gadget SV</p>
@@ -108,10 +112,10 @@ function Navbar({ user, onLogout, activeTab, setActiveTab }) {
       position: "sticky", top: 0, zIndex: 100,
       fontFamily: "'Inter', sans-serif",
     }}>
-      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 1.5rem", display: "flex", alignItems: "center", height: 52, gap: "2rem" }}>
-        <img src={LOGO_URL} alt="Tecno Gadget" style={{ width: 120, borderRadius: "6px" }} />
+      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 1rem", display: "flex", alignItems: "center", height: "auto", minHeight: 52, gap: "1rem", flexWrap: "wrap" }}>
+        <img src={LOGO_URL} alt="Tecno Gadget" style={{ width: 150, borderRadius: "6px" }} />
 
-        <div style={{ display: "flex", gap: "0.25rem", flex: 1 }}>
+        <div style={{ display: "flex", gap: "0.25rem", flex: 1, overflowX: "auto", scrollbarWidth: "none" }}>
           {tabs.map(tab => (
             <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{
               adding: "0.4rem 0.85rem",
