@@ -551,7 +551,7 @@ function TablaOrdenes({ ordenes, tipo, onUpdateEnvio, esAdmin, onSave }) {
             const envio = tipo === "departamental" ? ENVIO_DEPTO : (envios[o.id] || 0);
             const neto = total - envio;
             return (
-              <tr key={o.id} style={{ borderBottom: "1px solid #f5f5f7" }}>
+              <tr key={o.id} onClick={() => { setOrdenEditar(o); setTipoEditar(tipo); }}    style={{ borderBottom: "1px solid #f5f5f7", cursor: "pointer" }}>
                 <td style={{ padding: "0.75rem 1rem", fontWeight: 700, color: "#007AFF" }}>#{o.numero_ficha || "-"}</td>
                 <td style={{ padding: "0.75rem 1rem", color: "#6e6e73" }}>{o.fecha_orden}</td>
                 <td style={{ padding: "0.75rem 1rem", fontWeight: 500 }}>{o.nombre_cliente || "Sin nombre"}</td>
