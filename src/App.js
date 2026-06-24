@@ -3,6 +3,7 @@
 /* eslint-disable no-dupe-keys */
 import { useState, useEffect } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
+import { search } from "lucide-react";
 
 const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL;
 const SUPABASE_KEY = process.env.REACT_APP_SUPABASE_KEY;
@@ -122,20 +123,24 @@ function Navbar({ user, onLogout, activeTab, setActiveTab }) {
           ))}
         </div>
 
-         <input
-  placeholder="🔍 Buscar ficha o vendedor..."
-  style={{
-    padding: "0.4rem 0.85rem",
-    border: "1px solid #e5e5ea",
-    borderRadius: "20px",
-    fontSize: "0.82rem",
-    background: "#f5f5f7",
-    outline: "none",
-    fontFamily: "'Inter', sans-serif",
-    width: 220,
-    color: "#1d1d1f",
-  }}
-/>
+         <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+  <Search size={14} color="#6e6e73" style={{ position: "absolute", left: 10, pointerEvents: "none" }} />
+  <input
+    placeholder="Buscar ficha o vendedor..."
+    style={{
+      padding: "0.4rem 0.85rem 0.4rem 2rem",
+      border: "1px solid #e5e5ea",
+      borderRadius: "20px",
+      fontSize: "0.82rem",
+      background: "#f5f5f7",
+      outline: "none",
+      fontFamily: "'Inter', sans-serif",
+      width: 220,
+      color: "#1d1d1f",
+    }}
+  />
+</div>
+
         <div style={{ position: "relative" }}>
           <button onClick={() => setShowMenu(!showMenu)} style={{
             display: "flex", alignItems: "center", gap: "0.5rem",
