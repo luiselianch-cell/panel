@@ -49,6 +49,9 @@ function Login({ onLogin }) {
       display: "flex", alignItems: "center", justifyContent: "center",
       fontFamily: "'Inter', sans-serif",
       padding: "1rem",
+      overflow: "hidden",
+      position: "fixed",
+      width: "100%",
     }}>
       <div style={{ width: "100%", maxWidth: 360, textAlign: "center" }}>
         <img src={LOGO_URL} alt="Tecno Gadget" style={{ width: 72, height: 72, borderRadius: "18px", marginBottom: "1.5rem", display: "block", margin: "0 auto 1.5rem", boxShadow: "0 4px 16px rgba(0,0,0,0.12)" }} />
@@ -118,7 +121,21 @@ function Navbar({ user, onLogout, activeTab, setActiveTab }) {
             }}>{tab.label}</button>
           ))}
         </div>
-
+        
+         <input
+  placeholder="🔍 Buscar ficha o vendedor..."
+  style={{
+    padding: "0.4rem 0.85rem",
+    border: "1px solid #e5e5ea",
+    borderRadius: "20px",
+    fontSize: "0.82rem",
+    background: "#f5f5f7",
+    outline: "none",
+    fontFamily: "'Inter', sans-serif",
+    width: 220,
+    color: "#1d1d1f",
+  }}
+/>
         <div style={{ position: "relative" }}>
           <button onClick={() => setShowMenu(!showMenu)} style={{
             display: "flex", alignItems: "center", gap: "0.5rem",
@@ -175,6 +192,20 @@ function StatCard({ label, value, sub, accent }) {
 
 // ══ TablaOrdenes ══════════════════════════════════════════
 function TablaOrdenes({ ordenes, tipo, onUpdateEnvio, esAdmin }) {
+  const [envios, setEnvios] = useState(() => {
+    const obj = {};
+    ordenes.forEach(o => { obj[o.id] = o.costo_envio || 0; });
+    return obj;
+  });
+
+  function handleEnvioChange(id, valor) {
+    setEnvios(prev => ({ ...prev, [id]: parseFloat(valor) || 0 }));
+  }
+
+  function handleEnvioBlur(id, valor, tipo) {
+    onUpdateEnvio && onUpdateEnvio(id, valor, tipo);
+  }
+
   return (
     <div style={{ overflowX: "auto" }}>
       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.83rem" }}>
@@ -191,7 +222,7 @@ function TablaOrdenes({ ordenes, tipo, onUpdateEnvio, esAdmin }) {
           )}
           {ordenes.map((o, i) => {
             const total = parseMonto(o.total_pagar);
-            const envio = tipo === "departamental" ? ENVIO_DEPTO : (o.costo_envio || 0);
+            const envio = tipo === "departamental" ? ENVIO_DEPTO : (envios[o.id] || 0);
             const neto = total - envio;
             return (
               <tr key={o.id} style={{ borderBottom: "1px solid #f5f5f7" }}>
@@ -205,11 +236,37 @@ function TablaOrdenes({ ordenes, tipo, onUpdateEnvio, esAdmin }) {
                   {tipo === "departamental" ? (
                     <span style={{ color: "#ff3b30", fontSize: "0.82rem" }}>-${ENVIO_DEPTO}</span>
                   ) : esAdmin ? (
-                    <input type="number" defaultValue={o.costo_envio || 0} step="0.01" min="0"
-                      onBlur={e => onUpdateEnvio && onUpdateEnvio(o.id, e.target.value, "local")}
-                      style={{ width: 70, padding: "0.3rem 0.5rem", border: "1px solid #e5e5ea", borderRadius: "8px", fontSize: "0.82rem", outline: "none", background: "#f5f5f7" }} />
+                    <input
+  type="text"
+  inputMode="decimal"
+  value={envios[o.id] || 0}
+  onChange={e => {
+    const val = e.target.value.replace(/[^0-9.]/g, "");
+    handleEnvioChange(o.id, val);
+  }}
+  
+  style={{
+    width: 70,
+    padding: "0.35rem 0.6rem",
+    border: "1.5px solid #e5e5ea",
+    borderRadius: "8px",
+    fontSize: "0.82rem",
+    outline: "none",
+    background: "#f5f5f7",
+    color: "#1d1d1f",
+    fontFamily: "'Inter', sans-serif",
+    fontWeight: 500,
+    textAlign: "center",
+    transition: "border 0.15s",
+  }}
+  onFocus={e => e.target.style.border = "1.5px solid #007AFF"}
+  onBlur={e => {
+    e.target.style.border = "1.5px solid #e5e5ea";
+    handleEnvioBlur(o.id, e.target.value, "local");
+  }}
+/>
                   ) : (
-                    <span style={{ color: "#ff3b30", fontSize: "0.82rem" }}>-${(o.costo_envio || 0).toFixed(2)}</span>
+                    <span style={{ color: "#ff3b30", fontSize: "0.82rem" }}>-${(envios[o.id] || 0).toFixed(2)}</span>
                   )}
                 </td>
                 <td style={{ padding: "0.75rem 1rem", fontWeight: 600, color: "#34C759" }}>{formatMoney(neto)}</td>
@@ -440,6 +497,7 @@ function AdminVendedores() {
   const [deptos, setDeptos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filtroFecha, setFiltroFecha] = useState(fechaHoy());
+  const [busqueda, setBusqueda] = useState("");
 
   useEffect(() => { cargarTodo(); }, [filtroFecha]);
 
@@ -457,12 +515,16 @@ function AdminVendedores() {
   const porVendedor = {};
   locales.forEach(o => {
     const v = o.quien_ingresa || "Sin asignar";
+    if (v.includes("TecnoGadget")) return; // Excluir órdenes de TecnoGadget
+    if (v.includes("Caleb (Venta Propia)")) return; // Excluir órdenes de Caleb
     if (!porVendedor[v]) porVendedor[v] = { vendedor: v, ordenes: 0, total: 0 };
     porVendedor[v].ordenes++;
     porVendedor[v].total += parseMonto(o.total_pagar) - (o.costo_envio || 0);
   });
   deptos.forEach(o => {
     const v = o.quien_ingresa || "Sin asignar";
+    if (v.includes("TecnoGadget")) return; // Excluir órdenes de TecnoGadget
+    if (v.includes("Caleb (Venta Propia)")) return; // Excluir órdenes de Caleb 
     if (!porVendedor[v]) porVendedor[v] = { vendedor: v, ordenes: 0, total: 0 };
     porVendedor[v].ordenes++;
     porVendedor[v].total += parseMonto(o.total_pagar) - ENVIO_DEPTO;
@@ -472,13 +534,15 @@ function AdminVendedores() {
     <div style={{ maxWidth: 1200, margin: "0 auto", padding: "2rem 1.5rem" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
         <h2 style={{ fontSize: "1.5rem", fontWeight: 700, color: "#1d1d1f", margin: 0, letterSpacing: "-0.02em" }}>Vendedores</h2>
-        <input type="date" value={filtroFecha} onChange={e => setFiltroFecha(e.target.value)}
-          style={{ padding: "0.5rem 0.85rem", border: "1px solid #e5e5ea", borderRadius: "10px", fontSize: "0.85rem", background: "#fff", outline: "none" }} />
+        <input type="date" value={filtroFecha} onChange={e => setFiltroFecha(e.target.value)} />
+        <input placeholder="Buscar vendedor..." value={busqueda} onChange={e => setBusqueda(e.target.value)} style={{ padding: "0.5rem 0.85rem", border: "1px solid #e5e5ea", borderRadius: "10px", fontSize: "0.85rem", background: "#fff", outline: "none", fontFamily: "'Inter', sans-serif" }} />
       </div>
 
       {loading ? <div style={{ textAlign: "center", color: "#6e6e73", padding: "3rem" }}>Cargando...</div> : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1rem" }}>
-          {Object.values(porVendedor).map((v, i) => (
+          {Object.values(porVendedor)
+          .filter(v => v.vendedor.toLowerCase().includes(busqueda.toLowerCase()))
+          .map((v, i) => (
             <div key={i} style={{ background: "#fff", borderRadius: "16px", padding: "1.25rem 1.5rem", boxShadow: "0 2px 12px rgba(0,0,0,0.04)" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                 <div>
