@@ -13,9 +13,10 @@ const ENVIO_DEPTO = 3.39;
 const COMISION = 0.10;
 const LOGO_URL = "/Logo-banner.png";
 
+
 const USUARIOS = [
   { usuario: "admin", password: "admin2026", rol: "admin", nombre: "Administrador" },
-  { usuario: "maressa", password: "1", rol: "vendedor", nombre: "Maressa" },
+  { usuario: "maressa", password: "maressa86", rol: "vendedor", nombre: "Maressa (Vend)" },
 ];
 
 const CHART_COLORS = ["#007AFF", "#34C759", "#FF9500", "#FF2D55", "#5856D6"];
@@ -623,13 +624,18 @@ function TablaOrdenes({ ordenes, tipo, onUpdateEnvio, esAdmin, onSave }) {
 
     <button onClick={() => {
       const texto = "Orden " + o.numero_ficha +
-        "\n" + o.fecha_orden +
-        "\n" + o.articulos +
-        "\n" + (o.nombre_cliente || "Sin nombre") +
-        "\n" + (o.numero_contacto || "-") +
-        "\n" + o.total_pagar +
-        "\n" + o.forma_pago +
-        "\n" + o.quien_ingresa;
+  "\n📅 " + o.fecha_orden +
+  "\n📦 " + o.articulos +
+  "\n👤 " + (o.nombre_cliente || "Sin nombre") +
+  "\n📱 " + (o.numero_contacto || "-") +
+  "\n📍 " + (o.municipio || o.departamento || "-") +
+  "\n🏠 " + (o.direccion_entrega || "-") +
+  "\n🕐 " + (o.hora_limite || "-") +
+  "\n💰 " + o.total_pagar +
+  "\n💳 " + o.forma_pago + " | " + o.tipo_comprobante +
+  "\n📲 " + (o.perfil_salio_1 || o.perfil_salio || "-") +
+  "\n👥 " + o.quien_ingresa +
+  "\n📝 " + (o.comentario_libre || "Sin notas");
       navigator.clipboard.writeText(texto);
     }} title="Copiar orden"
       style={{
