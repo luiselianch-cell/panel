@@ -4,7 +4,7 @@
 import { useState, useEffect } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 // eslint-disable-next-line no-unused-vars
-import { Home, ClipboardList, BarChart2, Users, Search, Menu } from "lucide-react";
+import { Home, ClipboardList, BarChart2, Users, UserCheck, Search, Menu } from "lucide-react";
 import { Copy, XCircle, RefreshCw } from "lucide-react";
 
 const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL;
@@ -112,7 +112,7 @@ function Navbar({ user, onLogout, activeTab, setActiveTab, busqueda, setBusqueda
   }, []);
 
   const tabs = user.rol === "admin"
-    ? [{ id: "dashboard", icon: <Home size={15} />, label: "Inicio" }, { id: "ordenes", icon: <ClipboardList size={15} />, label: "Órdenes" }, { id: "estadisticas", icon: <BarChart2 size={15} />, label: "Estadísticas" }, { id: "vendedores", icon: <Users size={15} />, label: "Vendedores"}, { id: "equipo", icon: <Users size={15} />, label: "Equipo" }]
+    ? [{ id: "dashboard", icon: <Home size={15} />, label: "Inicio" }, { id: "ordenes", icon: <ClipboardList size={15} />, label: "Órdenes" }, { id: "estadisticas", icon: <BarChart2 size={15} />, label: "Estadísticas" }, { id: "vendedores", icon: <UserCheck size={15} />, label: "Vendedores"}, { id: "equipo", icon: <Users size={15} />, label: "Equipo" }]
     : [{ id: "mis-ordenes", icon: <ClipboardList size={15} />, label: "Mis Órdenes" }, { id: "mis-stats", icon: <BarChart2 size={15} />, label: "Mis Stats" }];
 
   function handleTabClick(id) {
@@ -1043,6 +1043,15 @@ function AdminVendedores() {
   const porVendedor = {};
   locales.forEach(o => {
     const v = o.quien_ingresa || "Sin asignar";
+    const VENDEDORES_EXTERNOS = [
+          "Maressa (Vend)",
+          "Yanci (Vend)",
+          "Sara Eunice (Vend)",
+          "Kevin (Vend)",
+          "Marisol (Vend)",
+          "Herbert (Vend)",
+      ];
+    if (!VENDEDORES_EXTERNOS.includes(v)) return;  
     if (v.includes("Tecno Gadget")) return; // Excluir órdenes de Tecno Gadget
     if (v.includes("Caleb (Venta Propia)")) return; // Excluir órdenes de Caleb
     if (!porVendedor[v]) porVendedor[v] = { vendedor: v, ordenes: 0, total: 0 };
@@ -1051,6 +1060,16 @@ function AdminVendedores() {
   });
   deptos.forEach(o => {
     const v = o.quien_ingresa || "Sin asignar";
+    const VENDEDORES_EXTERNOS = [
+  "Maressa (Vend)",
+  "Yanci (Vend)",
+  "Sara Eunice (Vend)",
+  "Kevin (Vend)",
+  "Marisol (Vend)",
+  "Herbert (Vend)",
+];
+    
+    if (!VENDEDORES_EXTERNOS.includes(v)) return;
     if (v.includes("TecnoGadget")) return; // Excluir órdenes de TecnoGadget
     if (v.includes("Caleb (Venta Propia)")) return; // Excluir órdenes de Caleb 
     if (!porVendedor[v]) porVendedor[v] = { vendedor: v, ordenes: 0, total: 0 };
