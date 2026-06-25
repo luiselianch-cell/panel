@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 // eslint-disable-next-line no-unused-vars
 import { Home, ClipboardList, BarChart2, Users, Search, Menu } from "lucide-react";
+import { Copy, XCircle, RefreshCw } from "lucide-react";
 
 const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL;
 const SUPABASE_KEY = process.env.REACT_APP_SUPABASE_KEY;
@@ -340,147 +341,153 @@ function ModalEditar({ orden, tipo, onClose, onSave }) {
       position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
       background: "rgba(0,0,0,0.4)", backdropFilter: "blur(4px)",
       zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center",
-      padding: "1rem", fontFamily: "'Inter', sans-serif",
+      padding: "1.5rem", fontFamily: "'Inter', sans-serif",
     }} onClick={onClose}>
       <div style={{
         background: "#fff", borderRadius: "20px",
         padding: "1.5rem", width: "100%", maxWidth: 560,
-        maxHeight: "90vh", overflowY: "auto",
+        maxHeight: "85vh",
         boxShadow: "0 20px 60px rgba(0,0,0,0.2)",
+        display: "flex", flexDirection: "column",
       }} onClick={e => e.stopPropagation()}>
 
         {/* Header */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem", flexShrink: 0 }}>
           <div>
             <h2 style={{ fontSize: "1.2rem", fontWeight: 700, color: "#1d1d1f", margin: 0 }}>Editar Orden</h2>
-            <p style={{ color: "#6e6e73", fontSize: "0.82rem", margin: "0.2rem 0 0" }}>Ficha #{orden.numero_ficha} — {tipo === "local" ? "Local" : "Departamental"}</p>
+            <p style={{ color: "#6e6e73", fontSize: "0.82rem", margin: "0.2rem 0 0" }}>Ficha {orden.numero_ficha} — {tipo === "local" ? "Local" : "Departamental"}</p>
           </div>
           <button onClick={onClose} style={{ background: "#f5f5f7", border: "none", borderRadius: "50%", width: 32, height: 32, cursor: "pointer", fontSize: "1rem", display: "flex", alignItems: "center", justifyContent: "center", color: "#6e6e73" }}>✕</button>
         </div>
 
-        {/* Estado */}
-        <div style={{ ...fieldStyle, padding: "0.75rem 1rem", background: form.estado === "cancelada" ? "#fff2f2" : "#f0fff4", borderRadius: "10px", marginBottom: "1.25rem", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <span style={{ fontSize: "0.85rem", fontWeight: 600, color: form.estado === "cancelada" ? "#ff3b30" : "#34C759" }}>
-            {form.estado === "cancelada" ? "❌ Cancelada" : "✅ Completada"}
-          </span>
-          <button onClick={() => setForm(p => ({ ...p, estado: p.estado === "cancelada" ? "completada" : "cancelada" }))}
-            style={{
-              padding: "0.4rem 0.85rem", borderRadius: "8px", border: "none", cursor: "pointer",
-              background: form.estado === "cancelada" ? "#34C759" : "#ff3b30",
-              color: "#fff", fontSize: "0.8rem", fontWeight: 600,
-            }}>
-            {form.estado === "cancelada" ? "Marcar completada" : "Marcar cancelada"}
-          </button>
-        </div>
+        {/* Contenido scrolleable */}
+        <div style={{ flex: 1, overflowY: "auto", paddingRight: "0.25rem" }}>
 
-        {/* Campos */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 1rem" }}>
-          <div style={fieldStyle}>
-            <label style={labelStyle}>Fecha</label>
-            <input type="date" name="fecha_orden" value={form.fecha_orden || ""} onChange={handleChange} style={inputStyle} />
+          {/* Estado */}
+          <div style={{ padding: "0.75rem 1rem", background: form.estado === "cancelada" ? "#fff2f2" : "#f0fff4", borderRadius: "10px", marginBottom: "1.25rem", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <span style={{ fontSize: "0.85rem", fontWeight: 600, color: form.estado === "cancelada" ? "#ff3b30" : "#34C759" }}>
+              {form.estado === "cancelada" ? "❌ Cancelada" : "✅ Completada"}
+            </span>
+            <button onClick={() => setForm(p => ({ ...p, estado: p.estado === "cancelada" ? "completada" : "cancelada" }))}
+              style={{
+                padding: "0.4rem 0.85rem", borderRadius: "8px", border: "none", cursor: "pointer",
+                background: form.estado === "cancelada" ? "#34C759" : "#ff3b30",
+                color: "#fff", fontSize: "0.8rem", fontWeight: 600,
+              }}>
+              {form.estado === "cancelada" ? "Marcar completada" : "Marcar cancelada"}
+            </button>
           </div>
-          <div style={fieldStyle}>
-            <label style={labelStyle}>Total a pagar</label>
-            <input name="total_pagar" value={form.total_pagar || ""} onChange={handleChange} style={inputStyle} placeholder="$0.00" />
-          </div>
-        </div>
 
-        <div style={fieldStyle}>
-          <label style={labelStyle}>Artículos</label>
-          <textarea name="articulos" value={form.articulos || ""} onChange={handleChange} style={{ ...inputStyle, resize: "vertical", minHeight: 72 }} />
-        </div>
-
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 1rem" }}>
-          <div style={fieldStyle}>
-            <label style={labelStyle}>Nombre del cliente</label>
-            <input name="nombre_cliente" value={form.nombre_cliente || ""} onChange={handleChange} style={inputStyle} />
-          </div>
-          <div style={fieldStyle}>
-            <label style={labelStyle}>Número de contacto</label>
-            <input name="numero_contacto" value={form.numero_contacto || ""} onChange={handleChange} style={inputStyle} />
-          </div>
-        </div>
-
-        {tipo === "local" ? (
-          <>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 1rem" }}>
             <div style={fieldStyle}>
-              <label style={labelStyle}>Municipio</label>
-              <select name="municipio" value={form.municipio || ""} onChange={handleChange} style={inputStyle}>
-                {MUNICIPIOS_LOCAL.map(m => <option key={m} value={m}>{m}</option>)}
-              </select>
+              <label style={labelStyle}>Fecha</label>
+              <input type="date" name="fecha_orden" value={form.fecha_orden || ""} onChange={handleChange} style={inputStyle} />
             </div>
             <div style={fieldStyle}>
-              <label style={labelStyle}>Relación con lugar de entrega</label>
-              <select name="relacion_entrega" value={form.relacion_entrega || ""} onChange={handleChange} style={inputStyle}>
-                {["Lugar de residencia del cliente", "Lugar de trabajo del cliente", "Lugar de estudio del cliente", "Cliente visitará el lugar durante unas horas", "Cliente llegará al lugar para recibir la orden"].map(r => <option key={r} value={r}>{r}</option>)}
-              </select>
+              <label style={labelStyle}>Total a pagar</label>
+              <input name="total_pagar" value={form.total_pagar || ""} onChange={handleChange} style={inputStyle} placeholder="$0.00" />
             </div>
-          </>
-        ) : (
-          <>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 1rem" }}>
+          </div>
+
+          <div style={fieldStyle}>
+            <label style={labelStyle}>Artículos</label>
+            <textarea name="articulos" value={form.articulos || ""} onChange={handleChange} style={{ ...inputStyle, resize: "vertical", minHeight: 72 }} />
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 1rem" }}>
+            <div style={fieldStyle}>
+              <label style={labelStyle}>Nombre del cliente</label>
+              <input name="nombre_cliente" value={form.nombre_cliente || ""} onChange={handleChange} style={inputStyle} />
+            </div>
+            <div style={fieldStyle}>
+              <label style={labelStyle}>Número de contacto</label>
+              <input name="numero_contacto" value={form.numero_contacto || ""} onChange={handleChange} style={inputStyle} />
+            </div>
+          </div>
+
+          {tipo === "local" ? (
+            <>
               <div style={fieldStyle}>
-                <label style={labelStyle}>Tipo de entrega</label>
-                <select name="tipo_entrega" value={form.tipo_entrega || ""} onChange={handleChange} style={inputStyle}>
-                  {TIPOS_ENTREGA.map(t => <option key={t} value={t}>{t}</option>)}
+                <label style={labelStyle}>Municipio</label>
+                <select name="municipio" value={form.municipio || ""} onChange={handleChange} style={inputStyle}>
+                  {MUNICIPIOS_LOCAL.map(m => <option key={m} value={m}>{m}</option>)}
                 </select>
               </div>
               <div style={fieldStyle}>
-                <label style={labelStyle}>Departamento</label>
-                <select name="departamento" value={form.departamento || ""} onChange={handleChange} style={inputStyle}>
-                  {DEPARTAMENTOS.map(d => <option key={d} value={d}>{d}</option>)}
+                <label style={labelStyle}>Relación con lugar de entrega</label>
+                <select name="relacion_entrega" value={form.relacion_entrega || ""} onChange={handleChange} style={inputStyle}>
+                  {["Lugar de residencia del cliente", "Lugar de trabajo del cliente", "Lugar de estudio del cliente", "Cliente visitará el lugar durante unas horas", "Cliente llegará al lugar para recibir la orden"].map(r => <option key={r} value={r}>{r}</option>)}
                 </select>
               </div>
+            </>
+          ) : (
+            <>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 1rem" }}>
+                <div style={fieldStyle}>
+                  <label style={labelStyle}>Tipo de entrega</label>
+                  <select name="tipo_entrega" value={form.tipo_entrega || ""} onChange={handleChange} style={inputStyle}>
+                    {TIPOS_ENTREGA.map(t => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                </div>
+                <div style={fieldStyle}>
+                  <label style={labelStyle}>Departamento</label>
+                  <select name="departamento" value={form.departamento || ""} onChange={handleChange} style={inputStyle}>
+                    {DEPARTAMENTOS.map(d => <option key={d} value={d}>{d}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div style={fieldStyle}>
+                <label style={labelStyle}>Municipio</label>
+                <input name="municipio" value={form.municipio || ""} onChange={handleChange} style={inputStyle} />
+              </div>
+            </>
+          )}
+
+          <div style={fieldStyle}>
+            <label style={labelStyle}>Dirección de entrega</label>
+            <textarea name="direccion_entrega" value={form.direccion_entrega || ""} onChange={handleChange} style={{ ...inputStyle, resize: "vertical", minHeight: 64 }} />
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 1rem" }}>
+            <div style={fieldStyle}>
+              <label style={labelStyle}>Forma de pago</label>
+              <select name="forma_pago" value={form.forma_pago || ""} onChange={handleChange} style={inputStyle}>
+                {FORMAS_PAGO.map(f => <option key={f} value={f}>{f}</option>)}
+              </select>
             </div>
             <div style={fieldStyle}>
-              <label style={labelStyle}>Municipio</label>
-              <input name="municipio" value={form.municipio || ""} onChange={handleChange} style={inputStyle} />
+              <label style={labelStyle}>Tipo de comprobante</label>
+              <select name="tipo_comprobante" value={form.tipo_comprobante || ""} onChange={handleChange} style={inputStyle}>
+                {TIPOS_COMPROBANTE.map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
             </div>
-          </>
-        )}
-
-        <div style={fieldStyle}>
-          <label style={labelStyle}>Dirección de entrega</label>
-          <textarea name="direccion_entrega" value={form.direccion_entrega || ""} onChange={handleChange} style={{ ...inputStyle, resize: "vertical", minHeight: 64 }} />
-        </div>
-
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 1rem" }}>
-          <div style={fieldStyle}>
-            <label style={labelStyle}>Forma de pago</label>
-            <select name="forma_pago" value={form.forma_pago || ""} onChange={handleChange} style={inputStyle}>
-              {FORMAS_PAGO.map(f => <option key={f} value={f}>{f}</option>)}
-            </select>
           </div>
-          <div style={fieldStyle}>
-            <label style={labelStyle}>Tipo de comprobante</label>
-            <select name="tipo_comprobante" value={form.tipo_comprobante || ""} onChange={handleChange} style={inputStyle}>
-              {TIPOS_COMPROBANTE.map(t => <option key={t} value={t}>{t}</option>)}
-            </select>
-          </div>
-        </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 1rem" }}>
-          <div style={fieldStyle}>
-            <label style={labelStyle}>Perfil</label>
-            <select name={tipo === "local" ? "perfil_salio_1" : "perfil_salio"} value={form.perfil_salio_1 || form.perfil_salio || ""} onChange={handleChange} style={inputStyle}>
-              {PERFILES.map(p => <option key={p} value={p}>{p}</option>)}
-            </select>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 1rem" }}>
+            <div style={fieldStyle}>
+              <label style={labelStyle}>Perfil</label>
+              <select name={tipo === "local" ? "perfil_salio_1" : "perfil_salio"} value={form.perfil_salio_1 || form.perfil_salio || ""} onChange={handleChange} style={inputStyle}>
+                {PERFILES.map(p => <option key={p} value={p}>{p}</option>)}
+              </select>
+            </div>
+            <div style={fieldStyle}>
+              <label style={labelStyle}>Quién ingresa</label>
+              <select name="quien_ingresa" value={form.quien_ingresa || ""} onChange={handleChange} style={inputStyle}>
+                {QUIEN_INGRESA.map(q => <option key={q} value={q}>{q}</option>)}
+              </select>
+            </div>
           </div>
+
           <div style={fieldStyle}>
-            <label style={labelStyle}>Quién ingresa</label>
-            <select name="quien_ingresa" value={form.quien_ingresa || ""} onChange={handleChange} style={inputStyle}>
-              {QUIEN_INGRESA.map(q => <option key={q} value={q}>{q}</option>)}
-            </select>
+            <label style={labelStyle}>Comentario libre</label>
+            <textarea name="comentario_libre" value={form.comentario_libre || ""} onChange={handleChange} style={{ ...inputStyle, resize: "vertical", minHeight: 64 }} />
           </div>
-        </div>
 
-        <div style={fieldStyle}>
-          <label style={labelStyle}>Comentario libre</label>
-          <textarea name="comentario_libre" value={form.comentario_libre || ""} onChange={handleChange} style={{ ...inputStyle, resize: "vertical", minHeight: 64 }} />
         </div>
+        {/* Fin contenido scrolleable */}
 
-        {/* Botones */}
-        <div style={{ display: "flex", gap: "0.75rem", marginTop: "0.5rem" }}>
+        {/* Botones fijos */}
+        <div style={{ display: "flex", gap: "0.75rem", paddingTop: "1rem", borderTop: "1px solid #f5f5f7", marginTop: "0.5rem", flexShrink: 0 }}>
           <button onClick={onClose} style={{
             flex: 1, padding: "0.75rem", background: "#f5f5f7", color: "#6e6e73",
             border: "none", borderRadius: "10px", fontWeight: 600, fontSize: "0.9rem", cursor: "pointer",
@@ -490,12 +497,14 @@ function ModalEditar({ orden, tipo, onClose, onSave }) {
             flex: 2, padding: "0.75rem",
             background: saving ? "#e5e5ea" : "#007AFF",
             color: saving ? "#6e6e73" : "#fff",
-            border: "none", borderRadius: "10px", fontWeight: 600, fontSize: "0.9rem", cursor: saving ? "default" : "pointer",
+            border: "none", borderRadius: "10px", fontWeight: 600, fontSize: "0.9rem",
+            cursor: saving ? "default" : "pointer",
             fontFamily: "'Inter', sans-serif",
           }}>
             {saving ? "Guardando..." : "Guardar cambios"}
           </button>
         </div>
+
       </div>
     </div>
   );
@@ -594,12 +603,45 @@ function TablaOrdenes({ ordenes, tipo, onUpdateEnvio, esAdmin, onSave }) {
                 <td style={{ padding: "0.75rem 1rem", color: "#6e6e73" }}>{o.perfil_salio_1 || o.perfil_salio || "-"}</td>
                 <td style={{ padding: "0.75rem 1rem", color: "#6e6e73" }}>{o.quien_ingresa}</td>
 
-      <td style={{ padding: "0.75rem 1rem", display: "flex", gap: "0.5rem", alignItems: "center" }}>
-  {o.estado !== "cancelada" && (
-  <button onClick={() => cancelarOrden(o.id, tipo)} style={{ padding: "0.3rem 0.75rem", background: "#fff0f0", border: "none", borderRadius: "6px", fontSize: "0.78rem", color: "#ff3b30", fontWeight: 600, cursor: "pointer" }}>
-    Cancelar
-  </button>
-)}
+      <td style={{ padding: "0.75rem 1rem" }} onClick={e => e.stopPropagation()}>
+  <div style={{ display: "flex", gap: "0.4rem", alignItems: "center" }}>
+    
+    {o.estado === "cancelada" && (
+      <span style={{ background: "#fff2f2", color: "#ff3b30", borderRadius: "6px", padding: "0.15rem 0.4rem", fontSize: "0.68rem" }}>Cancelada</span>
+    )}
+
+    <button onClick={() => cancelarOrden(o.id, tipo, o.estado === "cancelada" ? "completada" : "cancelada")} 
+      title={o.estado === "cancelada" ? "Reactivar" : "Cancelar"}
+      style={{
+        padding: "0.3rem", background: o.estado === "cancelada" ? "#f0fff4" : "#fff2f2",
+        border: "none", borderRadius: "6px", fontSize: "0.78rem",
+        cursor: "pointer", color: o.estado === "cancelada" ? "#34C759" : "#ff3b30",
+        display: "flex", alignItems: "center",
+      }}>
+      {o.estado === "cancelada" ? <RefreshCw size={14} /> : <XCircle size={14} />}
+    </button>
+
+    <button onClick={() => {
+      const texto = "Orden " + o.numero_ficha +
+        "\n" + o.fecha_orden +
+        "\n" + o.articulos +
+        "\n" + (o.nombre_cliente || "Sin nombre") +
+        "\n" + (o.numero_contacto || "-") +
+        "\n" + o.total_pagar +
+        "\n" + o.forma_pago +
+        "\n" + o.quien_ingresa;
+      navigator.clipboard.writeText(texto);
+    }} title="Copiar orden"
+      style={{
+        padding: "0.3rem", background: "#f5f5f7",
+        border: "none", borderRadius: "6px",
+        cursor: "pointer", color: "#6e6e73",
+        display: "flex", alignItems: "center",
+      }}>
+      <Copy size={14} />
+    </button>
+
+  </div>
 
 </td>
               </tr>
