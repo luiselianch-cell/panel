@@ -13,12 +13,6 @@ const ENVIO_DEPTO = 3.39;
 const COMISION = 0.10;
 const LOGO_URL = "/Logo-banner.png";
 
-
-const USUARIOS = [
-  { usuario: "admin", password: "admin2026", rol: "admin", nombre: "Administrador" },
-  { usuario: "maressa", password: "maressa86", rol: "vendedor", nombre: "Maressa (Vend)" },
-];
-
 const CHART_COLORS = ["#007AFF", "#34C759", "#FF9500", "#FF2D55", "#5856D6"];
 
 function parseMonto(str) {
@@ -38,10 +32,20 @@ function Login({ onLogin }) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
-  function handleLogin() {
-    const user = USUARIOS.find(u => u.usuario === usuario && u.password === password);
-    if (user) { onLogin(user); } else { setError("Usuario o contraseña incorrectos"); }
+  async function handleLogin() {
+  const res = await fetch(SUPABASE_URL + "/rest/v1/usuarios?usuario=eq." + usuario + "&password=eq." + password + "&activo=eq.true", {
+    headers: {
+      apikey: SUPABASE_KEY,
+      Authorization: "Bearer " + SUPABASE_KEY,
+    },
+  });
+  const data = await res.json();
+  if (data.length > 0) {
+    onLogin(data[0]);
+  } else {
+    setError("Usuario o contraseña incorrectos");
   }
+}
 
   return (
     <div style={{
@@ -95,7 +99,7 @@ function Login({ onLogin }) {
 }
 
 // ══ Navbar ════════════════════════════════════════════════
-function Navbar({ user, onLogout, activeTab, setActiveTab }) {
+function Navbar({ user, onLogout, activeTab, setActiveTab, busqueda, setBusqueda }) {
   const [showMenu, setShowMenu] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
@@ -108,7 +112,7 @@ function Navbar({ user, onLogout, activeTab, setActiveTab }) {
   }, []);
 
   const tabs = user.rol === "admin"
-    ? [{ id: "dashboard", icon: <Home size={15} />, label: "Inicio" }, { id: "ordenes", icon: <ClipboardList size={15} />, label: "Órdenes" }, { id: "estadisticas", icon: <BarChart2 size={15} />, label: "Estadísticas" }, { id: "vendedores", icon: <Users size={15} />, label: "Vendedores" }]
+    ? [{ id: "dashboard", icon: <Home size={15} />, label: "Inicio" }, { id: "ordenes", icon: <ClipboardList size={15} />, label: "Órdenes" }, { id: "estadisticas", icon: <BarChart2 size={15} />, label: "Estadísticas" }, { id: "vendedores", icon: <Users size={15} />, label: "Vendedores"}, { id: "equipo", icon: <Users size={15} />, label: "Equipo" }]
     : [{ id: "mis-ordenes", icon: <ClipboardList size={15} />, label: "Mis Órdenes" }, { id: "mis-stats", icon: <BarChart2 size={15} />, label: "Mis Stats" }];
 
   function handleTabClick(id) {
@@ -177,6 +181,8 @@ function Navbar({ user, onLogout, activeTab, setActiveTab }) {
                 <input
                   autoFocus
                   placeholder="Buscar ficha o vendedor..."
+                  value={busqueda}
+                  onChange={e => setBusqueda(e.target.value)}
                   style={{
                     width: "100%", padding: "0.5rem 0.75rem",
                     border: "1px solid #e5e5ea", borderRadius: "8px",
@@ -804,7 +810,7 @@ function Dashboard({ user }) {
 
 
 // ══ AdminOrdenes ══════════════════════════════════════════
-function AdminOrdenes() {
+function AdminOrdenes({ busquedaGlobal }) {
   const [locales, setLocales] = useState([]);
   const [deptos, setDeptos] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -1157,6 +1163,215 @@ function VendedorPanel({ user }) {
   );
 }
 
+// == Equipo ==============================================
+
+function AdminEquipo() {
+  const [usuarios, setUsuarios] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const [editando, setEditando] = useState(null);
+  const [busqueda, setBusqueda] = useState("");
+
+  const initialForm = { usuario: "", password: "", rol: "vendedor", nombre: "", activo: true };
+  const [form, setForm] = useState(initialForm);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => { cargarUsuarios(); }, []);
+
+  async function cargarUsuarios() {
+    setLoading(true);
+    const res = await fetch(SUPABASE_URL + "/rest/v1/usuarios?order=creado_en.asc", {
+      headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
+    });
+    setUsuarios(await res.json());
+    setLoading(false);
+  }
+
+  async function guardarUsuario() {
+    setSaving(true);
+    if (editando) {
+      await fetch(SUPABASE_URL + "/rest/v1/usuarios?id=eq." + editando.id, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
+        body: JSON.stringify(form),
+      });
+    } else {
+      await fetch(SUPABASE_URL + "/rest/v1/usuarios", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
+        body: JSON.stringify(form),
+      });
+    }
+    setSaving(false);
+    setShowModal(false);
+    setEditando(null);
+    setForm(initialForm);
+    cargarUsuarios();
+  }
+
+  async function toggleActivo(u) {
+    await fetch(SUPABASE_URL + "/rest/v1/usuarios?id=eq." + u.id, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
+      body: JSON.stringify({ activo: !u.activo }),
+    });
+    cargarUsuarios();
+  }
+
+  function handleEditar(u) {
+    setEditando(u);
+    setForm({ usuario: u.usuario, password: u.password, rol: u.rol, nombre: u.nombre, activo: u.activo });
+    setShowModal(true);
+  }
+
+  const inputStyle = {
+    width: "100%", padding: "0.6rem 0.85rem",
+    border: "1px solid #e5e5ea", borderRadius: "8px",
+    fontSize: "0.88rem", outline: "none",
+    background: "#f5f5f7", color: "#1d1d1f",
+    fontFamily: "'Inter', sans-serif",
+    boxSizing: "border-box",
+  };
+
+  const labelStyle = {
+    display: "block", fontSize: "0.72rem", fontWeight: 600,
+    color: "#6e6e73", textTransform: "uppercase",
+    letterSpacing: "0.05em", marginBottom: "0.35rem",
+  };
+
+  const usuariosFiltrados = usuarios.filter(u =>
+    u.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
+    u.usuario.toLowerCase().includes(busqueda.toLowerCase())
+  );
+
+  return (
+    <div style={{ maxWidth: 1200, margin: "0 auto", padding: "2rem 1.5rem" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
+        <h2 style={{ fontSize: "1.5rem", fontWeight: 700, color: "#1d1d1f", margin: 0, letterSpacing: "-0.02em" }}>Equipo</h2>
+        <div style={{ display: "flex", gap: "0.75rem" }}>
+          <input
+            placeholder="Buscar usuario..."
+            value={busqueda}
+            onChange={e => setBusqueda(e.target.value)}
+            style={{ padding: "0.5rem 0.85rem", border: "1px solid #e5e5ea", borderRadius: "10px", fontSize: "0.85rem", background: "#fff", outline: "none", fontFamily: "'Inter', sans-serif" }}
+          />
+          <button onClick={() => { setEditando(null); setForm(initialForm); setShowModal(true); }} style={{
+            padding: "0.5rem 1rem", background: "#007AFF", color: "#fff",
+            border: "none", borderRadius: "10px", fontWeight: 600, fontSize: "0.85rem",
+            cursor: "pointer", fontFamily: "'Inter', sans-serif",
+            display: "flex", alignItems: "center", gap: "0.35rem",
+          }}>
+            + Nuevo usuario
+          </button>
+        </div>
+      </div>
+
+      {loading ? <div style={{ textAlign: "center", color: "#6e6e73", padding: "3rem" }}>Cargando...</div> : (
+        <div style={{ background: "#fff", borderRadius: "16px", boxShadow: "0 2px 12px rgba(0,0,0,0.04)", overflow: "hidden" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.83rem" }}>
+            <thead>
+              <tr style={{ borderBottom: "1px solid #f5f5f7" }}>
+                {["Usuario", "Nombre", "Rol", "Contraseña", "Estado", "Acciones"].map(h => (
+                  <th key={h} style={{ padding: "0.75rem 1rem", textAlign: "left", color: "#6e6e73", fontWeight: 600, fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {usuariosFiltrados.map((u, i) => (
+                <tr key={u.id} style={{ borderBottom: "1px solid #f5f5f7", opacity: u.activo ? 1 : 0.5 }}>
+                  <td style={{ padding: "0.75rem 1rem", fontWeight: 600, color: "#1d1d1f" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                      <div style={{ width: 32, height: 32, borderRadius: "50%", background: u.rol === "admin" ? "#007AFF" : "#34C759", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: "0.78rem", fontWeight: 700, flexShrink: 0 }}>
+                        {u.nombre.charAt(0)}
+                      </div>
+                      {u.usuario}
+                    </div>
+                  </td>
+                  <td style={{ padding: "0.75rem 1rem", color: "#1d1d1f" }}>{u.nombre}</td>
+                  <td style={{ padding: "0.75rem 1rem" }}>
+                    <span style={{ background: u.rol === "admin" ? "rgba(0,122,255,0.1)" : "rgba(52,199,89,0.1)", color: u.rol === "admin" ? "#007AFF" : "#34C759", borderRadius: "6px", padding: "0.2rem 0.5rem", fontSize: "0.72rem", fontWeight: 600, textTransform: "uppercase" }}>
+                      {u.rol}
+                    </span>
+                  </td>
+                  <td style={{ padding: "0.75rem 1rem", color: "#6e6e73", fontFamily: "monospace" }}>
+                    {u.password}
+                  </td>
+                  <td style={{ padding: "0.75rem 1rem" }}>
+                    <span style={{ background: u.activo ? "rgba(52,199,89,0.1)" : "rgba(255,59,48,0.1)", color: u.activo ? "#34C759" : "#ff3b30", borderRadius: "6px", padding: "0.2rem 0.5rem", fontSize: "0.72rem", fontWeight: 600 }}>
+                      {u.activo ? "Activo" : "Inactivo"}
+                    </span>
+                  </td>
+                  <td style={{ padding: "0.75rem 1rem" }}>
+                    <div style={{ display: "flex", gap: "0.4rem" }}>
+                      <button onClick={() => handleEditar(u)} style={{ padding: "0.3rem 0.6rem", background: "#f5f5f7", border: "none", borderRadius: "6px", fontSize: "0.78rem", cursor: "pointer", color: "#007AFF", fontWeight: 500 }}>Editar</button>
+                      <button onClick={() => toggleActivo(u)} style={{ padding: "0.3rem 0.6rem", background: u.activo ? "#fff2f2" : "#f0fff4", border: "none", borderRadius: "6px", fontSize: "0.78rem", cursor: "pointer", color: u.activo ? "#ff3b30" : "#34C759", fontWeight: 500 }}>
+                        {u.activo ? "Desactivar" : "Activar"}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Modal crear/editar usuario */}
+      {showModal && (
+        <div style={{
+          position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+          background: "rgba(0,0,0,0.4)", backdropFilter: "blur(4px)",
+          zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center",
+          padding: "1.5rem", fontFamily: "'Inter', sans-serif",
+        }} onClick={() => setShowModal(false)}>
+          <div style={{
+            background: "#fff", borderRadius: "20px", padding: "1.5rem",
+            width: "100%", maxWidth: 440,
+            boxShadow: "0 20px 60px rgba(0,0,0,0.2)",
+          }} onClick={e => e.stopPropagation()}>
+
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
+              <h2 style={{ fontSize: "1.1rem", fontWeight: 700, color: "#1d1d1f", margin: 0 }}>
+                {editando ? "Editar usuario" : "Nuevo usuario"}
+              </h2>
+              <button onClick={() => setShowModal(false)} style={{ background: "#f5f5f7", border: "none", borderRadius: "50%", width: 32, height: 32, cursor: "pointer", color: "#6e6e73", display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
+            </div>
+
+            <div style={{ marginBottom: "1rem" }}>
+              <label style={labelStyle}>Usuario</label>
+              <input value={form.usuario} onChange={e => setForm(p => ({ ...p, usuario: e.target.value }))} style={inputStyle} placeholder="ej: maria.lopez" autoComplete="off" />
+            </div>
+            <div style={{ marginBottom: "1rem" }}>
+              <label style={labelStyle}>Contraseña</label>
+              <input value={form.password} onChange={e => setForm(p => ({ ...p, password: e.target.value }))} style={inputStyle} placeholder="contraseña" autoComplete="off" />
+            </div>
+            <div style={{ marginBottom: "1rem" }}>
+              <label style={labelStyle}>Nombre completo</label>
+              <input value={form.nombre} onChange={e => setForm(p => ({ ...p, nombre: e.target.value }))} style={inputStyle} placeholder="ej: María López (Vend)" autoComplete="off" />
+            </div>
+            <div style={{ marginBottom: "1.5rem" }}>
+              <label style={labelStyle}>Rol</label>
+              <select value={form.rol} onChange={e => setForm(p => ({ ...p, rol: e.target.value }))} style={inputStyle}>
+                <option value="vendedor">Vendedor</option>
+                <option value="admin">Admin</option>
+              </select>
+            </div>
+
+            <div style={{ display: "flex", gap: "0.75rem" }}>
+              <button onClick={() => setShowModal(false)} style={{ flex: 1, padding: "0.75rem", background: "#f5f5f7", color: "#6e6e73", border: "none", borderRadius: "10px", fontWeight: 600, cursor: "pointer", fontFamily: "'Inter', sans-serif" }}>Cancelar</button>
+              <button onClick={guardarUsuario} disabled={saving} style={{ flex: 2, padding: "0.75rem", background: saving ? "#e5e5ea" : "#007AFF", color: saving ? "#6e6e73" : "#fff", border: "none", borderRadius: "10px", fontWeight: 600, cursor: saving ? "default" : "pointer", fontFamily: "'Inter', sans-serif" }}>
+                {saving ? "Guardando..." : editando ? "Guardar cambios" : "Crear usuario"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+
 // ══ App ═════════════════════════════════════════════════
 export default function App() {
   const [user, setUser] = useState(() => {
@@ -1164,6 +1379,7 @@ export default function App() {
     return saved ? JSON.parse(saved) : null;
   });
   const [activeTab, setActiveTab] = useState("");
+  const [busquedaGlobal, setBusquedaGlobal] = useState("");
 
   function handleLogin(u) {
     setUser(u);
@@ -1188,6 +1404,7 @@ export default function App() {
       if (activeTab === "ordenes") return <AdminOrdenes />;
       if (activeTab === "estadisticas") return <AdminEstadisticas />;
       if (activeTab === "vendedores") return <AdminVendedores />;
+      if (activeTab === "equipo") return <AdminEquipo />;
     } else {
       return <VendedorPanel user={user} />;
     }
@@ -1195,7 +1412,7 @@ export default function App() {
 
   return (
     <div style={{ minHeight: "100vh", background: "#f5f5f7", fontFamily: "'Inter', sans-serif" }}>
-      <Navbar user={user} onLogout={handleLogout} activeTab={activeTab} setActiveTab={setActiveTab} />
+      <Navbar user={user} onLogout={handleLogout} activeTab={activeTab} setActiveTab={setActiveTab} busqueda={busquedaGlobal} setBusqueda={setBusquedaGlobal} />
       {renderContent()}
     </div>
   );
