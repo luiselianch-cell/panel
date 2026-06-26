@@ -4,7 +4,7 @@
 import { useState, useEffect } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 // eslint-disable-next-line no-unused-vars
-import { Home, ClipboardList, BarChart2, Users, UserCheck, Search, Menu, MessageCircle } from "lucide-react";
+import { Home, ClipboardList, BarChart2, Users, UserCheck, Search, Menu, MessageCircle, Eye, EyeOff } from "lucide-react";
 import { Copy, XCircle, RefreshCw } from "lucide-react";
 
 const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL;
@@ -30,7 +30,7 @@ function fechaHoy() {
 // ══ Login ═════════════════════════════════════════════════
 function Login({ onLogin }) {
   const [usuario, setUsuario] = useState("");
-  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
 
   async function handleLogin() {
@@ -80,10 +80,24 @@ function Login({ onLogin }) {
           </div>
           <div style={{ marginBottom: "1.5rem", textAlign: "left" }}>
             <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 600, color: "#6e6e73", marginBottom: "0.4rem" }}>CONTRASEÑA</label>
-            <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Contraseña"
-              onKeyDown={e => e.key === "Enter" && handleLogin()}
-              style={{ width: "100%", background: "#f5f5f7", border: "none", borderRadius: "10px", padding: "0.75rem 1rem", color: "#1d1d1f", fontSize: "0.95rem", outline: "none", boxSizing: "border-box" }} />
-          </div>
+            <input 
+              type={showPassword ? "text" : "password"} 
+              value={password} 
+              onChange={e => setPassword(e.target.value)}
+              placeholder="Contraseña"
+    onKeyDown={e => e.key === "Enter" && handleLogin()}
+    style={{ ...inputStyle, paddingRight: "2.5rem" }}
+  />
+  <button onClick={() => setShowPassword(!showPassword)} style={{
+    position: "absolute", right: "0.75rem", top: "50%",
+    transform: "translateY(-50%)",
+    background: "transparent", border: "none", cursor: "pointer",
+    color: "#6e6e73", display: "flex", alignItems: "center",
+    padding: 0,
+  }}>
+    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+  </button>
+</div>
           <button onClick={handleLogin} style={{
             width: "100%", padding: "0.85rem",
             background: "#007AFF", color: "#fff",
@@ -1456,9 +1470,22 @@ function AdminEquipo() {
                       {u.rol}
                     </span>
                   </td>
-                  <td style={{ padding: "0.75rem 1rem", color: "#6e6e73", fontFamily: "monospace" }}>
-                    {u.password}
-                  </td>
+                  <td style={{ padding: "0.75rem 1rem", color: "#6e6e73" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                   <span style={{ fontFamily: "monospace", fontSize: "0.85rem" }}>
+      {u.showPassword ? u.password : "••••••••"}
+    </span>
+    <button onClick={() => {
+      setUsuarios(prev => prev.map(x => x.id === u.id ? { ...x, showPassword: !x.showPassword } : x));
+    }} style={{
+      background: "transparent", border: "none", cursor: "pointer",
+      color: "#6e6e73", display: "flex", alignItems: "center", padding: 0,
+    }}>
+      {u.showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+    </button>
+  </div>
+</td>
+                  
                   <td style={{ padding: "0.75rem 1rem" }}>
                     <span style={{ background: u.activo ? "rgba(52,199,89,0.1)" : "rgba(255,59,48,0.1)", color: u.activo ? "#34C759" : "#ff3b30", borderRadius: "6px", padding: "0.2rem 0.5rem", fontSize: "0.72rem", fontWeight: 600 }}>
                       {u.activo ? "Activo" : "Inactivo"}
