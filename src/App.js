@@ -30,8 +30,9 @@ function fechaHoy() {
 // ══ Login ═════════════════════════════════════════════════
 function Login({ onLogin }) {
   const [usuario, setUsuario] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   async function handleLogin() {
   const res = await fetch(SUPABASE_URL + "/rest/v1/usuarios?usuario=eq." + usuario + "&password=eq." + password + "&activo=eq.true", {
