@@ -1198,6 +1198,8 @@ function VendedorPanel({ user }) {
       <div style={{
         background: "linear-gradient(135deg, #1c1c1e 0%, #2c2c2e 100%)",
         padding: "2rem 1.5rem 3rem",
+        marginTop: "-52px",
+        paddingTop: "calc(2rem + 52px)",
         position: "relative", overflow: "hidden",
       }}>
         {/* Bolitas decorativas */}
