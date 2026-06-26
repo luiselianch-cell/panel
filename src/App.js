@@ -99,11 +99,11 @@ function Login({ onLogin }) {
               onChange={e => setPassword(e.target.value)}
               placeholder="Contraseña"
     onKeyDown={e => e.key === "Enter" && handleLogin()}
-    style={{ ...inputStyle, paddingRight: "1rem" }}
+    style={{ ...inputStyle, paddingRight: "2.5rem" }}
   />
   <button onClick={() => setShowPassword(!showPassword)} style={{
-    position: "absolute", right: "0.75rem", top: "o.75rem",
-    transform: "translateY(-50%)",
+    position: "absolute", right: "0.75rem", top: "50%",
+    transform: "translateY(-60%)",
     background: "transparent", border: "none", cursor: "pointer",
     color: "#6e6e73", display: "flex", alignItems: "center",
     padding: 0,
