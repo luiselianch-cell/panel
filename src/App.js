@@ -64,8 +64,8 @@ function Login({ onLogin }) {
 }}>
       <div style={{ width: "100%", maxWidth: 360, textAlign: "center", padding: "0 1rem", boxSizing: "border-box" }}>
         <img src={LOGO_URL} alt="Tecno Gadget" style={{ width: 280, borderRadius: "6px", marginBottom: "1.5rem", display: "block", margin: "0 auto 1.5rem" }} />
-        <h1 style={{ fontSize: "1.75rem", fontWeight: 700, color: "#1d1d1f", margin: "0 0 0.25rem" }}>Panel de Control</h1>
-        <p style={{ color: "#6e6e73", fontSize: "0.9rem", margin: "0 0 2rem" }}>Tecno Gadget SV</p>
+        <h1 style={{ fontSize: "1.75rem", fontWeight: 700, color: "#1d1d1f", margin: "0 0 0.25rem" }}>¡Hey! ¿Qué hay de nuevo?</h1>
+        <p style={{ color: "#6e6e73", fontSize: "0.9rem", margin: "0 0 2rem" }}>slash3 systems</p>
 
         <div style={{ background: "#fff", borderRadius: "18px", padding: "1.75rem" }}>
           {error && (
@@ -75,12 +75,12 @@ function Login({ onLogin }) {
           )}
           <div style={{ marginBottom: "1rem", textAlign: "left" }}>
             <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 600, color: "#6e6e73", marginBottom: "0.4rem" }}>USUARIO</label>
-            <input value={usuario} onChange={e => setUsuario(e.target.value)} placeholder="tu usuario" autoComplete="off"
+            <input value={usuario} onChange={e => setUsuario(e.target.value)} placeholder="Usuario" autoComplete="off"
               style={{ width: "100%", background: "#f5f5f7", border: "none", borderRadius: "10px", padding: "0.75rem 1rem", color: "#1d1d1f", fontSize: "0.95rem", outline: "none", boxSizing: "border-box" }} />
           </div>
           <div style={{ marginBottom: "1.5rem", textAlign: "left" }}>
             <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 600, color: "#6e6e73", marginBottom: "0.4rem" }}>CONTRASEÑA</label>
-            <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••"
+            <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Contraseña"
               onKeyDown={e => e.key === "Enter" && handleLogin()}
               style={{ width: "100%", background: "#f5f5f7", border: "none", borderRadius: "10px", padding: "0.75rem 1rem", color: "#1d1d1f", fontSize: "0.95rem", outline: "none", boxSizing: "border-box" }} />
           </div>
