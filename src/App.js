@@ -91,25 +91,26 @@ function Login({ onLogin }) {
             <input value={usuario} onChange={e => setUsuario(e.target.value)} placeholder="Usuario" autoComplete="off"
               style={{ width: "100%", background: "#f5f5f7", border: "none", borderRadius: "10px", padding: "0.75rem 1rem", color: "#1d1d1f", fontSize: "0.95rem", outline: "none", boxSizing: "border-box" }} />
           </div>
-          <div style={{ marginBottom: "1.5rem", textAlign: "left", position: "relative"}}>
-            <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 600, color: "#6e6e73", marginBottom: "0.4rem" }}>CONTRASEÑA</label>
-            <input 
-              type={showPassword ? "text" : "password"} 
-              value={password} 
-              onChange={e => setPassword(e.target.value)}
-              placeholder="Contraseña"
-    onKeyDown={e => e.key === "Enter" && handleLogin()}
-    style={{ ...inputStyle, paddingRight: "2.5rem" }}
-  />
-  <button onClick={() => setShowPassword(!showPassword)} style={{
-    position: "absolute", right: "0.75rem", top: "calc(50% - 2px)",
-    transform: "translateY(-50%)",
-    background: "transparent", border: "none", cursor: "pointer",
-    color: "#6e6e73", display: "flex", alignItems: "center",
-    padding: 0,
-  }}>
-    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-  </button>
+          <div style={{ marginBottom: "1.5rem", textAlign: "left" }}>
+  <label style={labelStyle}>CONTRASEÑA</label>
+  <div style={{ position: "relative" }}>  {/* ← nuevo div solo para input+botón */}
+    <input
+      type={showPassword ? "text" : "password"}
+      value={password}
+      onChange={e => setPassword(e.target.value)}
+      placeholder="Contraseña"
+      onKeyDown={e => e.key === "Enter" && handleLogin()}
+      style={{ ...inputStyle, paddingRight: "2.5rem" }}
+    />
+    <button onClick={() => setShowPassword(!showPassword)} style={{
+      position: "absolute", right: "0.75rem", top: "50%",
+      transform: "translateY(-50%)",
+      background: "transparent", border: "none", cursor: "pointer",
+      color: "#6e6e73", display: "flex", alignItems: "center", padding: 0,
+    }}>
+      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+    </button>
+  </div>
 </div>
           <button onClick={handleLogin} style={{
             width: "100%", padding: "0.85rem",
