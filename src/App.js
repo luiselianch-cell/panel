@@ -91,7 +91,7 @@ function Login({ onLogin }) {
             <input value={usuario} onChange={e => setUsuario(e.target.value)} placeholder="Usuario" autoComplete="off"
               style={{ width: "100%", background: "#f5f5f7", border: "none", borderRadius: "10px", padding: "0.75rem 1rem", color: "#1d1d1f", fontSize: "0.95rem", outline: "none", boxSizing: "border-box" }} />
           </div>
-          <div style={{ marginBottom: "1.5rem", textAlign: "left" }}>
+          <div style={{ marginBottom: "1.5rem", textAlign: "left", position: "relative"}}>
             <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 600, color: "#6e6e73", marginBottom: "0.4rem" }}>CONTRASEÑA</label>
             <input 
               type={showPassword ? "text" : "password"} 
