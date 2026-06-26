@@ -1125,62 +1125,171 @@ function AdminVendedores() {
 function VendedorPanel({ user }) {
   const [locales, setLocales] = useState([]);
   const [deptos, setDeptos] = useState([]);
+  const [localesMes, setLocalesMes] = useState([]);
+  const [deptosMes, setDeptosMes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filtroFecha, setFiltroFecha] = useState(fechaHoy());
-  const [tab, setTab] = useState("locales");
 
   useEffect(() => { cargarMisOrdenes(); }, [filtroFecha]);
 
   async function cargarMisOrdenes() {
     setLoading(true);
-    const [resL, resD] = await Promise.all([
-      fetch(SUPABASE_URL + "/rest/v1/ordenes_locales?fecha_orden=eq." + filtroFecha + "&quien_ingresa=eq." + encodeURIComponent(user.nombre) + "&order=creado_en.desc", { headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY } }),
-      fetch(SUPABASE_URL + "/rest/v1/ordenes_departamentales?fecha_orden=eq." + filtroFecha + "&quien_ingresa=eq." + encodeURIComponent(user.nombre) + "&order=creado_en.desc", { headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY } }),
+    const nombre = encodeURIComponent(user.nombre);
+
+    // Mes anterior para comparativa
+    const hoy = new Date();
+    const inicioMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString().split("T")[0];
+    const inicioMesAnterior = new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1).toISOString().split("T")[0];
+    const finMesAnterior = new Date(hoy.getFullYear(), hoy.getMonth(), 0).toISOString().split("T")[0];
+
+    const [resL, resD, resLMes, resDMes] = await Promise.all([
+      fetch(SUPABASE_URL + "/rest/v1/ordenes_locales?fecha_orden=eq." + filtroFecha + "&quien_ingresa=eq." + nombre + "&order=creado_en.desc", { headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY } }),
+      fetch(SUPABASE_URL + "/rest/v1/ordenes_departamentales?fecha_orden=eq." + filtroFecha + "&quien_ingresa=eq." + nombre + "&order=creado_en.desc", { headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY } }),
+      fetch(SUPABASE_URL + "/rest/v1/ordenes_locales?fecha_orden=gte." + inicioMes + "&quien_ingresa=eq." + nombre, { headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY } }),
+      fetch(SUPABASE_URL + "/rest/v1/ordenes_departamentales?fecha_orden=gte." + inicioMes + "&quien_ingresa=eq." + nombre, { headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY } }),
     ]);
+
     setLocales(await resL.json());
     setDeptos(await resD.json());
+    setLocalesMes(await resLMes.json());
+    setDeptosMes(await resDMes.json());
     setLoading(false);
   }
 
-  const totalL = locales.reduce((s, o) => s + parseMonto(o.total_pagar) - (o.costo_envio || 0), 0);
-  const totalD = deptos.reduce((s, o) => s + parseMonto(o.total_pagar) - ENVIO_DEPTO, 0);
-  const totalGeneral = totalL + totalD;
+  const totalL = locales.filter(o => o.estado !== "cancelada").reduce((s, o) => s + parseMonto(o.total_pagar) - (o.costo_envio || 0), 0);
+  const totalD = deptos.filter(o => o.estado !== "cancelada").reduce((s, o) => s + parseMonto(o.total_pagar) - ENVIO_DEPTO, 0);
+  const totalDia = totalL + totalD;
+  const comisionDia = totalDia * COMISION;
 
-  const tabStyle = (active) => ({
-    padding: "0.45rem 1rem", borderRadius: "8px", border: "none",
-    background: active ? "#007AFF" : "transparent",
-    color: active ? "#fff" : "#6e6e73",
-    fontWeight: active ? 600 : 400, fontSize: "0.85rem", cursor: "pointer",
-  });
+  const totalMes = [
+    ...localesMes.filter(o => o.estado !== "cancelada").map(o => parseMonto(o.total_pagar) - (o.costo_envio || 0)),
+    ...deptosMes.filter(o => o.estado !== "cancelada").map(o => parseMonto(o.total_pagar) - ENVIO_DEPTO),
+  ].reduce((s, v) => s + v, 0);
+  const comisionMes = totalMes * COMISION;
+
+  const todasHoy = [...locales, ...deptos].sort((a, b) => new Date(b.creado_en) - new Date(a.creado_en));
+
+  const hora = new Date().getHours();
+  const saludo = hora < 12 ? "Buenos días" : hora < 18 ? "Buenas tardes" : "Buenas noches";
+  const nombreCorto = user.nombre.split(" ")[0].replace("(Vend)", "").trim();
 
   return (
-    <div style={{ maxWidth: 1200, margin: "0 auto", padding: "2rem 1.5rem" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
-        <h2 style={{ fontSize: "1.5rem", fontWeight: 700, color: "#1d1d1f", margin: 0, letterSpacing: "-0.02em" }}>Mis Órdenes</h2>
-        <input type="date" value={filtroFecha} onChange={e => setFiltroFecha(e.target.value)}
-          style={{ padding: "0.5rem 0.85rem", border: "1px solid #e5e5ea", borderRadius: "10px", fontSize: "0.85rem", background: "#fff", outline: "none" }} />
-      </div>
+    <div style={{ minHeight: "100vh", background: "#f5f5f7", fontFamily: "'Inter', sans-serif" }}>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "1rem", marginBottom: "1.5rem" }}>
-        <StatCard label="Mis Locales" value={formatMoney(totalL)} sub={locales.length + " órdenes"} />
-        <StatCard label="Mis Deptos" value={formatMoney(totalD)} sub={deptos.length + " órdenes"} />
-        <StatCard label="Mi Total" value={formatMoney(totalGeneral)} accent="#007AFF" />
-        <StatCard label="Mi Comisión" value={formatMoney(totalGeneral * COMISION)} accent="#34C759" />
-      </div>
+      {/* Hero section */}
+      <div style={{
+        background: "linear-gradient(135deg, #1c1c1e 0%, #2c2c2e 100%)",
+        padding: "2rem 1.5rem 3rem",
+        position: "relative", overflow: "hidden",
+      }}>
+        {/* Bolitas decorativas */}
+        <div style={{ position: "absolute", width: 300, height: 300, borderRadius: "50%", background: "radial-gradient(circle, rgba(0,122,255,0.15) 0%, transparent 70%)", top: -100, right: -50, pointerEvents: "none" }} />
+        <div style={{ position: "absolute", width: 200, height: 200, borderRadius: "50%", background: "radial-gradient(circle, rgba(52,199,89,0.1) 0%, transparent 70%)", bottom: -50, left: -30, pointerEvents: "none" }} />
 
-      <div style={{ background: "#fff", borderRadius: "16px", boxShadow: "0 2px 12px rgba(0,0,0,0.04)", overflow: "hidden" }}>
-        <div style={{ display: "flex", gap: "0.25rem", padding: "0.75rem 1rem", borderBottom: "1px solid #f5f5f7" }}>
-          <button onClick={() => setTab("locales")} style={tabStyle(tab === "locales")}>Locales ({locales.length})</button>
-          <button onClick={() => setTab("departamentales")} style={tabStyle(tab === "departamentales")}>Departamentales ({deptos.length})</button>
+        <div style={{ maxWidth: 560, margin: "0 auto", position: "relative" }}>
+          <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "0.85rem", margin: "0 0 0.25rem" }}>{saludo} 👋</p>
+          <h1 style={{ color: "#fff", fontSize: "1.6rem", fontWeight: 700, margin: "0 0 1.5rem", letterSpacing: "-0.02em" }}>{nombreCorto}</h1>
+
+          {/* Tarjeta comisión del mes */}
+          <div style={{
+            background: "rgba(255,255,255,0.08)",
+            backdropFilter: "blur(20px)",
+            WebkitBackdropFilter: "blur(20px)",
+            border: "1px solid rgba(255,255,255,0.12)",
+            borderRadius: "20px",
+            padding: "1.5rem",
+            marginBottom: "1rem",
+          }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+              <div>
+                <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "0.08em", margin: "0 0 0.35rem" }}>Comisión del mes</p>
+                <div style={{ color: "#34C759", fontSize: "2.2rem", fontWeight: 700, letterSpacing: "-0.03em" }}>{formatMoney(comisionMes)}</div>
+                <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "0.78rem", margin: "0.25rem 0 0" }}>de {formatMoney(totalMes)} vendidos</p>
+              </div>
+              <div style={{ textAlign: "right" }}>
+                <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "0.08em", margin: "0 0 0.35rem" }}>Hoy</p>
+                <div style={{ color: "#fff", fontSize: "1.3rem", fontWeight: 700, letterSpacing: "-0.02em" }}>{formatMoney(comisionDia)}</div>
+                <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "0.78rem", margin: "0.25rem 0 0" }}>{todasHoy.filter(o => o.estado !== "cancelada").length} órdenes</p>
+              </div>
+            </div>
+          </div>
         </div>
-        {loading ? <div style={{ padding: "3rem", textAlign: "center", color: "#6e6e73" }}>Cargando...</div>
-          : tab === "locales"
-          ? <TablaOrdenes ordenes={locales} tipo="local" esAdmin={false} />
-          : <TablaOrdenes ordenes={deptos} tipo="departamental" esAdmin={false} />}
+      </div>
+
+      {/* Contenido principal */}
+      <div style={{ maxWidth: 560, margin: "-1.5rem auto 0", padding: "0 1.5rem 3rem", position: "relative" }}>
+
+        {/* Cards resumen */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem", marginBottom: "1.5rem" }}>
+          {[
+            { label: "Locales", value: formatMoney(totalL), sub: locales.filter(o => o.estado !== "cancelada").length + " órdenes" },
+            { label: "Deptos", value: formatMoney(totalD), sub: deptos.filter(o => o.estado !== "cancelada").length + " órdenes" },
+          ].map((card, i) => (
+            <div key={i} style={{ background: "#fff", borderRadius: "16px", padding: "1rem 1.25rem", boxShadow: "0 2px 12px rgba(0,0,0,0.04)" }}>
+              <div style={{ fontSize: "0.68rem", fontWeight: 600, color: "#6e6e73", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.4rem" }}>{card.label}</div>
+              <div style={{ fontSize: "1.3rem", fontWeight: 700, color: "#1d1d1f", letterSpacing: "-0.02em" }}>{card.value}</div>
+              <div style={{ fontSize: "0.75rem", color: "#6e6e73", marginTop: "0.15rem" }}>{card.sub}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Filtro fecha */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+          <h2 style={{ fontSize: "1rem", fontWeight: 600, color: "#1d1d1f", margin: 0 }}>Mis órdenes</h2>
+          <input type="date" value={filtroFecha} onChange={e => setFiltroFecha(e.target.value)}
+            style={{ padding: "0.4rem 0.75rem", border: "1px solid #e5e5ea", borderRadius: "10px", fontSize: "0.82rem", background: "#fff", outline: "none", fontFamily: "'Inter', sans-serif" }} />
+        </div>
+
+        {/* Lista de órdenes */}
+        {loading ? (
+          <div style={{ textAlign: "center", color: "#6e6e73", padding: "2rem" }}>Cargando...</div>
+        ) : todasHoy.length === 0 ? (
+          <div style={{ background: "#fff", borderRadius: "16px", padding: "2rem", textAlign: "center", color: "#6e6e73", boxShadow: "0 2px 12px rgba(0,0,0,0.04)" }}>
+            No hay órdenes para esta fecha
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+            {todasHoy.map((o, i) => {
+              const esDep = !!o.departamento;
+              const envio = esDep ? ENVIO_DEPTO : (o.costo_envio || 0);
+              const neto = parseMonto(o.total_pagar) - envio;
+              const cancelada = o.estado === "cancelada";
+              return (
+                <div key={o.id} style={{
+                  background: "#fff", borderRadius: "16px",
+                  padding: "1rem 1.25rem",
+                  boxShadow: "0 2px 12px rgba(0,0,0,0.04)",
+                  opacity: cancelada ? 0.5 : 1,
+                  borderLeft: cancelada ? "3px solid #ff3b30" : "3px solid transparent",
+                }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.25rem" }}>
+                        <span style={{ background: esDep ? "rgba(88,86,214,0.1)" : "rgba(0,122,255,0.1)", color: esDep ? "#5856D6" : "#007AFF", borderRadius: "6px", padding: "0.15rem 0.4rem", fontSize: "0.68rem", fontWeight: 700 }}>
+                          {o.numero_ficha}
+                        </span>
+                        {cancelada && <span style={{ background: "#fff2f2", color: "#ff3b30", borderRadius: "6px", padding: "0.15rem 0.4rem", fontSize: "0.68rem", fontWeight: 600 }}>Cancelada</span>}
+                      </div>
+                      <div style={{ fontWeight: 600, color: "#1d1d1f", fontSize: "0.88rem" }}>{o.nombre_cliente || "Sin nombre"}</div>
+                      <div style={{ color: "#6e6e73", fontSize: "0.78rem", marginTop: "0.15rem" }}>{o.articulos?.slice(0, 45)}{o.articulos?.length > 45 ? "…" : ""}</div>
+                      <div style={{ color: "#6e6e73", fontSize: "0.75rem", marginTop: "0.15rem" }}>{esDep ? o.departamento : o.municipio}</div>
+                    </div>
+                    <div style={{ textAlign: "right", marginLeft: "1rem" }}>
+                      <div style={{ fontSize: "1.1rem", fontWeight: 700, color: cancelada ? "#6e6e73" : "#1d1d1f", letterSpacing: "-0.02em" }}>{o.total_pagar}</div>
+                      <div style={{ fontSize: "0.75rem", color: "#34C759", fontWeight: 600, marginTop: "0.15rem" }}>+{formatMoney(neto * COMISION)}</div>
+                      <div style={{ fontSize: "0.72rem", color: "#6e6e73", marginTop: "0.1rem" }}>{o.forma_pago}</div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );
 }
+
 
 // == Equipo ==============================================
 
