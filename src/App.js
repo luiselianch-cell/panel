@@ -1173,6 +1173,8 @@ function VendedorPanel({ user }) {
   const [deptosMes, setDeptosMes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filtroFecha, setFiltroFecha] = useState(fechaHoy());
+  const [ordenEditar, setOrdenEditar] = useState(null);
+  const [tipoEditar, setTipoEditar] = useState(null);
 
   useEffect(() => { cargarMisOrdenes(); }, [filtroFecha]);
 
@@ -1318,13 +1320,17 @@ function VendedorPanel({ user }) {
               const neto = parseMonto(o.total_pagar) - envio;
               const cancelada = o.estado === "cancelada";
               return (
-                <div key={o.id} style={{
-                  background: "#fff", borderRadius: "16px",
-                  padding: "1rem 1.25rem",
-                  boxShadow: "0 2px 12px rgba(0,0,0,0.04)",
-                  opacity: cancelada ? 0.5 : 1,
-                  borderLeft: cancelada ? "3px solid #ff3b30" : "3px solid transparent",
-                }}>
+                <div key={o.id} onClick={() => { 
+  setOrdenEditar(o); 
+  setTipoEditar(o.departamento ? "departamental" : "local"); 
+}} style={{
+  background: "#fff", borderRadius: "16px",
+  padding: "1rem 1.25rem",
+  boxShadow: "0 2px 12px rgba(0,0,0,0.04)",
+  opacity: cancelada ? 0.5 : 1,
+  borderLeft: cancelada ? "3px solid #ff3b30" : "3px solid transparent",
+  cursor: "pointer", 
+}}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                     <div style={{ flex: 1 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.25rem" }}>
@@ -1349,6 +1355,14 @@ function VendedorPanel({ user }) {
           </div>
         )}
       </div>
+      {ordenEditar && (
+  <ModalEditar
+    orden={ordenEditar}
+    tipo={tipoEditar}
+    onClose={() => setOrdenEditar(null)}
+    onSave={() => { setOrdenEditar(null); cargarMisOrdenes(); }}
+  />
+)}
     </div>
   );
 }
