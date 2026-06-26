@@ -102,8 +102,8 @@ function Login({ onLogin }) {
     style={{ ...inputStyle, paddingRight: "2.5rem" }}
   />
   <button onClick={() => setShowPassword(!showPassword)} style={{
-    position: "absolute", right: "0.75rem", top: "50%",
-    transform: "translateY(-60%)",
+    position: "absolute", right: "0.75rem", top: "calc(50% - 2px)",
+    transform: "translateY(-50%)",
     background: "transparent", border: "none", cursor: "pointer",
     color: "#6e6e73", display: "flex", alignItems: "center",
     padding: 0,
