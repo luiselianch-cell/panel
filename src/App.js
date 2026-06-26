@@ -92,7 +92,7 @@ function Login({ onLogin }) {
               style={{ width: "100%", background: "#f5f5f7", border: "none", borderRadius: "10px", padding: "0.75rem 1rem", color: "#1d1d1f", fontSize: "0.95rem", outline: "none", boxSizing: "border-box" }} />
           </div>
           <div style={{ marginBottom: "1.5rem", textAlign: "left" }}>
-  <label style={labelStyle}>CONTRASEÑA</label>
+  <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 600, color: "#6e6e73", marginBottom: "0.4rem" }}>CONTRASEÑA</label>
   <div style={{ position: "relative" }}>  {/* ← nuevo div solo para input+botón */}
     <input
       type={showPassword ? "text" : "password"}
