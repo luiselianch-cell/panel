@@ -4,7 +4,7 @@
 import { useState, useEffect } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 // eslint-disable-next-line no-unused-vars
-import { Home, ClipboardList, BarChart2, Users, UserCheck, Search, Menu } from "lucide-react";
+import { Home, ClipboardList, BarChart2, Users, UserCheck, Search, Menu, MessageCircle } from "lucide-react";
 import { Copy, XCircle, RefreshCw } from "lucide-react";
 
 const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL;
@@ -1216,6 +1216,21 @@ function VendedorPanel({ user }) {
             </div>
           </div>
         </div>
+        <a href={"https://wa.me/50376399341?text=" + encodeURIComponent(
+  "Hola! Soy " + user.nombre.replace("(Vend)", "").trim() + 
+  " y quisiera cobrar mi comisión de " + formatMoney(comisionMes) + 
+  " correspondiente a " + formatMoney(totalMes) + " en ventas este mes. 🙏"
+)} target="_blank" rel="noreferrer" style={{
+  display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem",
+  background: "#25D366", color: "#fff",
+  borderRadius: "12px", padding: "0.75rem 1rem",
+  fontSize: "0.88rem", fontWeight: 600,
+  textDecoration: "none", marginTop: "1rem",
+  fontFamily: "'Inter', sans-serif",
+}}>
+  <MessageCircle size={16} />
+  Solicitar pago de comisión
+</a>
       </div>
 
       {/* Contenido principal */}
