@@ -132,9 +132,9 @@ function Navbar({ user, onLogout, activeTab, setActiveTab, busqueda, setBusqueda
   return (
     <>
       <div style={{
-        background: darkMode ? "rgba(0,0,0,0.2)" : "rgba(255,255,255,0.85)",
-        backdropFilter: "blur(20px)",
-        WebkitBackdropFilter: "blur(20px)",
+        background: darkMode ? "transparent" : "rgba(255,255,255,0.85)",
+        backdropFilter: darkMode ? "none" : "blur(20px)",
+        WebkitBackdropFilter: darkMode ? "none" : "blur(20px)",
         borderBottom: "1px solid " + borderColor,
         position: "sticky", top: 0, zIndex: 100,
         fontFamily: "'Inter', sans-serif",
