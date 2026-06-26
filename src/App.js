@@ -1573,7 +1573,7 @@ export default function App() {
 
   return (
     <div style={{ minHeight: "100vh", background: "#f5f5f7", fontFamily: "'Inter', sans-serif" }}>
-      <Navbar user={user} onLogout={handleLogout} activeTab={activeTab} setActiveTab={setActiveTab} busqueda={busquedaGlobal} setBusqueda={setBusquedaGlobal} />
+      <Navbar user={user} onLogout={handleLogout} activeTab={activeTab} setActiveTab={setActiveTab} busqueda={busquedaGlobal} setBusqueda={setBusquedaGlobal} darkMode={user.rol === "vendedor"} />
       {renderContent()}
     </div>
   );
