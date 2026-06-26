@@ -145,7 +145,7 @@ function Navbar({ user, onLogout, activeTab, setActiveTab, busqueda, setBusqueda
           <img
             src={darkMode ? LOGO_WHITE : LOGO_URL}
             alt="Tecno Gadget"
-            style={{ height: 28, borderRadius: "6px", flexShrink: 0 }}
+            style={{ height: 36, borderRadius: "6px", flexShrink: 0 }}
           />
 
           {/* Pestañas — solo desktop y solo admin */}
