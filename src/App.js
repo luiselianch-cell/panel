@@ -12,6 +12,7 @@ const SUPABASE_KEY = process.env.REACT_APP_SUPABASE_KEY;
 const ENVIO_DEPTO = 3.39;
 const COMISION = 0.10;
 const LOGO_URL = "/Logo-banner.png";
+const LOGO_WHITE = "Logo-White.png";
 
 const CHART_COLORS = ["#007AFF", "#34C759", "#FF9500", "#FF2D55", "#5856D6"];
 
@@ -99,7 +100,7 @@ function Login({ onLogin }) {
 }
 
 // ══ Navbar ════════════════════════════════════════════════
-function Navbar({ user, onLogout, activeTab, setActiveTab, busqueda, setBusqueda }) {
+function Navbar({ user, onLogout, activeTab, setActiveTab, busqueda, setBusqueda, darkMode }) {
   const [showMenu, setShowMenu] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
@@ -112,39 +113,51 @@ function Navbar({ user, onLogout, activeTab, setActiveTab, busqueda, setBusqueda
   }, []);
 
   const tabs = user.rol === "admin"
-    ? [{ id: "dashboard", icon: <Home size={15} />, label: "Inicio" }, { id: "ordenes", icon: <ClipboardList size={15} />, label: "Órdenes" }, { id: "estadisticas", icon: <BarChart2 size={15} />, label: "Estadísticas" }, { id: "vendedores", icon: <UserCheck size={15} />, label: "Vendedores"}, { id: "equipo", icon: <Users size={15} />, label: "Equipo" }]
-    : [{ id: "mis-ordenes", icon: <ClipboardList size={15} />, label: "Mis Órdenes" }, { id: "mis-stats", icon: <BarChart2 size={15} />, label: "Mis Stats" }];
+    ? [{ id: "dashboard", icon: <Home size={15} />, label: "Inicio" }, { id: "ordenes", icon: <ClipboardList size={15} />, label: "Órdenes" }, { id: "estadisticas", icon: <BarChart2 size={15} />, label: "Estadísticas" }, { id: "vendedores", icon: <UserCheck size={15} />, label: "Vendedores" }, { id: "equipo", icon: <Users size={15} />, label: "Equipo" }]
+    : [];
 
   function handleTabClick(id) {
     setActiveTab(id);
     setShowMenu(false);
   }
 
+  const textColor = darkMode ? "rgba(255,255,255,0.7)" : "#6e6e73";
+  const textActive = darkMode ? "#34C759" : "#007AFF";
+  const borderColor = darkMode ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.06)";
+  const menuBg = darkMode ? "#1c1c1e" : "#fff";
+  const menuText = darkMode ? "#fff" : "#1d1d1f";
+  const inputBg = darkMode ? "rgba(255,255,255,0.1)" : "#f5f5f7";
+  const inputBorder = darkMode ? "rgba(255,255,255,0.15)" : "#e5e5ea";
+
   return (
     <>
       <div style={{
-        background: "rgba(255,255,255,0.85)",
+        background: darkMode ? "rgba(28,28,30,0.95)" : "rgba(255,255,255,0.85)",
         backdropFilter: "blur(20px)",
         WebkitBackdropFilter: "blur(20px)",
-        borderBottom: "1px solid rgba(0,0,0,0.06)",
+        borderBottom: "1px solid " + borderColor,
         position: "sticky", top: 0, zIndex: 100,
         fontFamily: "'Inter', sans-serif",
       }}>
         <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 1rem", display: "flex", alignItems: "center", height: 52, gap: "1rem" }}>
 
           {/* Logo */}
-          <img src={LOGO_URL} alt="Tecno Gadget" style={{ height: 40, borderRadius: "6px", flexShrink: 0 }} />
+          <img
+            src={darkMode ? "/logo-white.png" : LOGO_URL}
+            alt="Tecno Gadget"
+            style={{ height: 28, borderRadius: "6px", flexShrink: 0 }}
+          />
 
-          {/* Pestañas — solo desktop */}
-          {!isMobile && (
+          {/* Pestañas — solo desktop y solo admin */}
+          {!isMobile && user.rol === "admin" && (
             <div style={{ display: "flex", flex: 1 }}>
               {tabs.map(tab => (
                 <button key={tab.id} onClick={() => handleTabClick(tab.id)} style={{
                   padding: "0.4rem 0.85rem",
                   background: "transparent",
-                  color: activeTab === tab.id ? "#007AFF" : "#6e6e73",
+                  color: activeTab === tab.id ? textActive : textColor,
                   border: "none",
-                  borderBottom: activeTab === tab.id ? "2px solid #007AFF" : "2px solid transparent",
+                  borderBottom: activeTab === tab.id ? "2px solid " + textActive : "2px solid transparent",
                   borderRadius: 0,
                   fontWeight: activeTab === tab.id ? 600 : 400,
                   fontSize: "0.88rem",
@@ -160,33 +173,35 @@ function Navbar({ user, onLogout, activeTab, setActiveTab, busqueda, setBusqueda
             </div>
           )}
 
-          {isMobile && <div style={{ flex: 1 }} />}
+          <div style={{ flex: 1 }} />
 
-          {/* Búsqueda — botón con icono */}
+          {/* Búsqueda */}
           <div style={{ position: "relative" }}>
             <button onClick={() => setShowSearch(!showSearch)} style={{
               background: "transparent", border: "none", cursor: "pointer",
               padding: "0.4rem", borderRadius: "8px", display: "flex", alignItems: "center",
-              color: "#6e6e73",
+              color: textColor,
             }}>
               <Search size={18} />
             </button>
             {showSearch && (
               <div style={{
                 position: "absolute", top: "calc(100% + 8px)", right: 0,
-                background: "#fff", borderRadius: "12px",
-                boxShadow: "0 8px 30px rgba(0,0,0,0.12)",
+                background: menuBg, borderRadius: "12px",
+                boxShadow: "0 8px 30px rgba(0,0,0,0.15)",
                 padding: "0.5rem", zIndex: 200, width: 260,
               }}>
                 <input
                   autoFocus
-                  placeholder="Buscar ficha o vendedor..."
+                  placeholder="Buscar ficha o cliente..."
                   value={busqueda}
                   onChange={e => setBusqueda(e.target.value)}
                   style={{
                     width: "100%", padding: "0.5rem 0.75rem",
-                    border: "1px solid #e5e5ea", borderRadius: "8px",
-                    fontSize: "0.85rem", outline: "none",
+                    border: "1px solid " + inputBorder,
+                    borderRadius: "8px", fontSize: "0.85rem",
+                    outline: "none", background: inputBg,
+                    color: menuText,
                     fontFamily: "'Inter', sans-serif",
                     boxSizing: "border-box",
                   }}
@@ -205,19 +220,20 @@ function Navbar({ user, onLogout, activeTab, setActiveTab, busqueda, setBusqueda
               <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#007AFF", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: "0.78rem", fontWeight: 700, flexShrink: 0 }}>
                 {user.nombre.charAt(0)}
               </div>
-              {!isMobile && <span style={{ fontSize: "0.85rem", color: "#1d1d1f", fontWeight: 500 }}>{user.nombre.split(" ")[0]}</span>}
+              {!isMobile && <span style={{ fontSize: "0.85rem", color: menuText, fontWeight: 500 }}>{user.nombre.split(" ")[0]}</span>}
             </button>
 
             {showUserMenu && (
               <div style={{
                 position: "absolute", top: "calc(100% + 8px)", right: 0,
-                background: "#fff", borderRadius: "12px",
-                boxShadow: "0 8px 30px rgba(0,0,0,0.12)",
+                background: menuBg, borderRadius: "12px",
+                boxShadow: "0 8px 30px rgba(0,0,0,0.15)",
                 padding: "0.5rem", minWidth: 180, zIndex: 200,
+                border: "1px solid " + inputBorder,
               }}>
-                <div style={{ padding: "0.5rem 0.75rem", borderBottom: "1px solid #f5f5f7", marginBottom: "0.25rem" }}>
-                  <div style={{ fontSize: "0.82rem", fontWeight: 600, color: "#1d1d1f" }}>{user.nombre}</div>
-                  <div style={{ fontSize: "0.72rem", color: "#6e6e73", textTransform: "uppercase", letterSpacing: "0.05em" }}>{user.rol}</div>
+                <div style={{ padding: "0.5rem 0.75rem", borderBottom: "1px solid " + inputBorder, marginBottom: "0.25rem" }}>
+                  <div style={{ fontSize: "0.82rem", fontWeight: 600, color: menuText }}>{user.nombre}</div>
+                  <div style={{ fontSize: "0.72rem", color: textColor, textTransform: "uppercase", letterSpacing: "0.05em" }}>{user.rol}</div>
                 </div>
                 <button onClick={onLogout} style={{
                   width: "100%", textAlign: "left", padding: "0.6rem 0.75rem",
@@ -229,11 +245,11 @@ function Navbar({ user, onLogout, activeTab, setActiveTab, busqueda, setBusqueda
             )}
           </div>
 
-          {/* Hamburguesa — solo móvil */}
-          {isMobile && (
+          {/* Hamburguesa — solo admin en móvil */}
+          {isMobile && user.rol === "admin" && (
             <button onClick={() => setShowMenu(!showMenu)} style={{
               background: "transparent", border: "none", cursor: "pointer",
-              padding: "0.4rem", borderRadius: "8px", color: "#1d1d1f",
+              padding: "0.4rem", borderRadius: "8px", color: textColor,
               display: "flex", alignItems: "center",
             }}>
               <Menu size={22} />
@@ -242,13 +258,13 @@ function Navbar({ user, onLogout, activeTab, setActiveTab, busqueda, setBusqueda
         </div>
       </div>
 
-      {/* Menú móvil desplegable */}
-      {isMobile && showMenu && (
+      {/* Menú móvil — solo admin */}
+      {isMobile && showMenu && user.rol === "admin" && (
         <div style={{
-          background: "rgba(255,255,255,0.97)",
+          background: darkMode ? "rgba(28,28,30,0.97)" : "rgba(255,255,255,0.97)",
           backdropFilter: "blur(20px)",
           WebkitBackdropFilter: "blur(20px)",
-          borderBottom: "1px solid rgba(0,0,0,0.06)",
+          borderBottom: "1px solid " + borderColor,
           padding: "0.5rem 1rem",
           fontFamily: "'Inter', sans-serif",
           zIndex: 99,
@@ -258,8 +274,8 @@ function Navbar({ user, onLogout, activeTab, setActiveTab, busqueda, setBusqueda
             <button key={tab.id} onClick={() => handleTabClick(tab.id)} style={{
               width: "100%", textAlign: "left",
               padding: "0.75rem 0.85rem",
-              background: activeTab === tab.id ? "rgba(0,122,255,0.08)" : "transparent",
-              color: activeTab === tab.id ? "#007AFF" : "#1d1d1f",
+              background: activeTab === tab.id ? (darkMode ? "rgba(52,199,89,0.1)" : "rgba(0,122,255,0.08)") : "transparent",
+              color: activeTab === tab.id ? textActive : menuText,
               border: "none", borderRadius: "10px",
               fontWeight: activeTab === tab.id ? 600 : 400,
               fontSize: "0.92rem", cursor: "pointer",
