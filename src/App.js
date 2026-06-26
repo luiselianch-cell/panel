@@ -33,6 +33,18 @@ function Login({ onLogin }) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const inputStyle = {
+  width: "100%",
+  background: "#f5f5f7",
+  border: "none",
+  borderRadius: "10px",
+  padding: "0.75rem 1rem",
+  color: "#1d1d1f",
+  fontSize: "0.95rem",
+  outline: "none",
+  boxSizing: "border-box",
+  fontFamily: "'Inter', sans-serif",
+};
 
   async function handleLogin() {
   const res = await fetch(SUPABASE_URL + "/rest/v1/usuarios?usuario=eq." + usuario + "&password=eq." + password + "&activo=eq.true", {
