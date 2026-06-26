@@ -1139,7 +1139,9 @@ function VendedorPanel({ user }) {
     // Mes anterior para comparativa
     const hoy = new Date();
     const inicioMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString().split("T")[0];
+    // eslint-disable-next-line no-unused-vars
     const inicioMesAnterior = new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1).toISOString().split("T")[0];
+     // eslint-disable-next-line no-unused-vars
     const finMesAnterior = new Date(hoy.getFullYear(), hoy.getMonth(), 0).toISOString().split("T")[0];
 
     const [resL, resD, resLMes, resDMes] = await Promise.all([
