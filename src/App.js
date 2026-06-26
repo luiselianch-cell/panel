@@ -143,7 +143,7 @@ function Navbar({ user, onLogout, activeTab, setActiveTab, busqueda, setBusqueda
 
           {/* Logo */}
           <img
-            src={darkMode ? "/logo-white.png" : LOGO_URL}
+            src={darkMode ? LOGO_WHITE : LOGO_URL}
             alt="Tecno Gadget"
             style={{ height: 28, borderRadius: "6px", flexShrink: 0 }}
           />
