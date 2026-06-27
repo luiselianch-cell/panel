@@ -1,6 +1,7 @@
 /* eslint-disable react/jsx-no-undef */
 /* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable no-dupe-keys */
+/* eslint-disable no-unused-vars */
 import { useState, useEffect, useRef } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from "recharts";
 // eslint-disable-next-line no-unused-vars
@@ -948,7 +949,7 @@ ultimaOrdenRef.current = ultima?.id;
           <h1 style={{ fontSize: "2rem", fontWeight: 700, color: "#1d1d1f", margin: "0 0 0.35rem", letterSpacing: "-0.03em" }}>
             {saludo}, {user.nombre.split(" ")[0]}! 👋
           </h1>
-          <p style={{ color: "#6e6e73", fontSize: "1rem", margin: 0 }}>
+          <p style={{ color: "#6e6e73", fontSize: "1re m", margin: 0 }}>
             ¿Cuántas ventas hicimos hoy?
           </p>
         </div>
