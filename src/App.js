@@ -907,7 +907,7 @@ function Dashboard({ user }) {
     });
   }
 
-  const todasOrdenes = [...localesData, ...deptosData];
+  const todasOrdenes = [...locales, ...deptos];
   const ultima = todasOrdenes.sort((a, b) => new Date(b.creado_en) - new Date(a.creado_en))[0];
 
 if (ultimaOrdenRef.current && ultima && ultima.id !== ultimaOrdenRef.current) {
