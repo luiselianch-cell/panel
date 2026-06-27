@@ -1,11 +1,11 @@
 /* eslint-disable react/jsx-no-undef */
 /* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable no-dupe-keys */
-import { useState, useEffect } from "react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
+import { useState, useEffect, useRef } from "react";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from "recharts";
 // eslint-disable-next-line no-unused-vars
 import { Home, ClipboardList, BarChart2, Users, UserCheck, Search, Menu, MessageCircle, Eye, EyeOff } from "lucide-react";
-import { Copy, XCircle, RefreshCw } from "lucide-react";
+import { Copy, XCircle, RefreshCw, Check } from "lucide-react";
 
 const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL;
 const SUPABASE_KEY = process.env.REACT_APP_SUPABASE_KEY;
@@ -567,6 +567,7 @@ function ModalEditar({ orden, tipo, onClose, onSave }) {
 function TablaOrdenes({ ordenes, tipo, onUpdateEnvio, esAdmin, onSave }) {
   const [ordenEditar, setOrdenEditar] = useState(null);
   const [tipoEditar, setTipoEditar] = useState(null);
+  const [copiado, setCopiado] = useState(null);
   const [envios, setEnvios] = useState(() => {
     const obj = {};
     ordenes.forEach(o => { obj[o.id] = o.costo_envio || 0; });
@@ -672,31 +673,34 @@ function TablaOrdenes({ ordenes, tipo, onUpdateEnvio, esAdmin, onSave }) {
       {o.estado === "cancelada" ? <RefreshCw size={14} /> : <XCircle size={14} />}
     </button>
 
-    <button onClick={() => {
-      const texto = "Orden " + o.numero_ficha +
-  "\n📅 " + o.fecha_orden +
-  "\n📦 " + o.articulos +
-  "\n👤 " + (o.nombre_cliente || "Sin nombre") +
-  "\n📱 " + (o.numero_contacto || "-") +
-  "\n📍 " + (o.municipio || o.departamento || "-") +
-  "\n🏠 " + (o.direccion_entrega || "-") +
-  "\n🕐 " + (o.hora_limite || "-") +
-  "\n💰 " + o.total_pagar +
-  "\n💳 " + o.forma_pago + " | " + o.tipo_comprobante +
-  "\n📲 " + (o.perfil_salio_1 || o.perfil_salio || "-") +
-  "\n👥 " + o.quien_ingresa +
-  "\n📝 " + (o.comentario_libre || "Sin notas");
-      navigator.clipboard.writeText(texto);
-    }} title="Copiar orden"
-      style={{
-        padding: "0.3rem", background: "#f5f5f7",
-        border: "none", borderRadius: "6px",
-        cursor: "pointer", color: "#6e6e73",
-        display: "flex", alignItems: "center",
-      }}>
-      <Copy size={14} />
-    </button>
-
+   <button onClick={() => {
+  const texto = "Orden " + o.numero_ficha +
+    "\n📅 " + o.fecha_orden +
+    "\n📦 " + o.articulos +
+    "\n👤 " + (o.nombre_cliente || "Sin nombre") +
+    "\n📱 " + (o.numero_contacto || "-") +
+    "\n📍 " + (o.municipio || o.departamento || "-") +
+    "\n🏠 " + (o.direccion_entrega || "-") +
+    "\n🕐 " + (o.hora_limite || "-") +
+    "\n💰 " + o.total_pagar +
+    "\n💳 " + o.forma_pago + " | " + o.tipo_comprobante +
+    "\n📲 " + (o.perfil_salio_1 || o.perfil_salio || "-") +
+    "\n👥 " + o.quien_ingresa +
+    "\n📝 " + (o.comentario_libre || "Sin notas");
+  navigator.clipboard.writeText(texto);
+  setCopiado(o.id);
+  setTimeout(() => setCopiado(null), 2000);
+}} title={copiado === o.id ? "¡Copiado!" : "Copiar orden"}
+  style={{
+    padding: "0.3rem", 
+    background: copiado === o.id ? "rgba(52,199,89,0.1)" : "#f5f5f7",
+    border: "none", borderRadius: "6px",
+    cursor: "pointer", 
+    color: copiado === o.id ? "#34C759" : "#6e6e73",
+    display: "flex", alignItems: "center",
+  }}>
+  {copiado === o.id ? <Check size={14} /> : <Copy size={14} />}
+</button>
   </div>
 
 </td>
@@ -717,11 +721,179 @@ function TablaOrdenes({ ordenes, tipo, onUpdateEnvio, esAdmin, onSave }) {
   );
 }
 
+
+// ══ Componente de gráficas comparativas para Dashboard ══
+
+function GraficasComparativas() {
+  const [datos, setDatos] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [semanaActual, setSemanaActual] = useState(0);
+  const [semanaAnterior, setSemanaAnterior] = useState(0);
+  const [mesActual, setMesActual] = useState(0);
+  const [mesAnterior, setMesAnterior] = useState(0);
+
+  useEffect(() => { cargarComparativas(); }, []);
+
+  async function cargarComparativas() {
+    setLoading(true);
+    const hoy = new Date();
+
+    // Rangos
+    const inicioSemana = new Date(hoy); inicioSemana.setDate(hoy.getDate() - 6);
+    const inicioSemanaAnt = new Date(hoy); inicioSemanaAnt.setDate(hoy.getDate() - 13);
+    const finSemanaAnt = new Date(hoy); finSemanaAnt.setDate(hoy.getDate() - 7);
+    const inicioMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+    const inicioMesAnt = new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1);
+    const finMesAnt = new Date(hoy.getFullYear(), hoy.getMonth(), 0);
+
+    const fmt = d => d.toISOString().split("T")[0];
+
+    const [resL, resD] = await Promise.all([
+      fetch(SUPABASE_URL + "/rest/v1/ordenes_locales?fecha_orden=gte." + fmt(inicioSemanaAnt) + "&order=fecha_orden.asc", {
+        headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
+      }),
+      fetch(SUPABASE_URL + "/rest/v1/ordenes_departamentales?fecha_orden=gte." + fmt(inicioSemanaAnt) + "&order=fecha_orden.asc", {
+        headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
+      }),
+    ]);
+
+    const locales = await resL.json();
+    const deptos = await resD.json();
+    const todas = [
+      ...locales.filter(o => o.estado !== "cancelada").map(o => ({ ...o, neto: parseMonto(o.total_pagar) - (o.costo_envio || 0) })),
+      ...deptos.filter(o => o.estado !== "cancelada").map(o => ({ ...o, neto: parseMonto(o.total_pagar) - ENVIO_DEPTO })),
+    ];
+
+    // Ventas por día últimas 2 semanas
+    const ventasPorDia = {};
+    todas.forEach(o => {
+      if (!ventasPorDia[o.fecha_orden]) ventasPorDia[o.fecha_orden] = 0;
+      ventasPorDia[o.fecha_orden] += o.neto;
+    });
+
+    // Generar últimos 14 días
+    const chartData = [];
+    for (let i = 13; i >= 0; i--) {
+      const d = new Date(hoy);
+      d.setDate(hoy.getDate() - i);
+      const key = fmt(d);
+      chartData.push({ 
+        fecha: key.slice(5), // MM-DD
+        valor: ventasPorDia[key] || 0,
+        semana: i >= 7 ? "anterior" : "actual"
+      });
+    }
+    setDatos(chartData);
+
+    // Totales comparativos
+    const swActual = todas.filter(o => o.fecha_orden >= fmt(inicioSemana)).reduce((s, o) => s + o.neto, 0);
+    const swAnterior = todas.filter(o => o.fecha_orden >= fmt(inicioSemanaAnt) && o.fecha_orden <= fmt(finSemanaAnt)).reduce((s, o) => s + o.neto, 0);
+    const smActual = todas.filter(o => o.fecha_orden >= fmt(inicioMes)).reduce((s, o) => s + o.neto, 0);
+    const smAnterior = todas.filter(o => o.fecha_orden >= fmt(inicioMesAnt) && o.fecha_orden <= fmt(finMesAnt)).reduce((s, o) => s + o.neto, 0);
+
+    setSemanaActual(swActual);
+    setSemanaAnterior(swAnterior);
+    setMesActual(smActual);
+    setMesAnterior(smAnterior);
+    setLoading(false);
+  }
+
+  function Tendencia({ actual, anterior, label }) {
+    const diff = anterior === 0 ? 100 : ((actual - anterior) / anterior) * 100;
+    const sube = diff >= 0;
+    return (
+      <div style={{ background: "#fff", borderRadius: "16px", padding: "1.25rem 1.5rem", boxShadow: "0 2px 12px rgba(0,0,0,0.04)" }}>
+        <div style={{ fontSize: "0.72rem", fontWeight: 600, color: "#6e6e73", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.5rem" }}>{label}</div>
+        <div style={{ fontSize: "1.75rem", fontWeight: 700, color: "#1d1d1f", letterSpacing: "-0.02em" }}>{formatMoney(actual)}</div>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.35rem", marginTop: "0.35rem" }}>
+          <span style={{ 
+            background: sube ? "rgba(52,199,89,0.1)" : "rgba(255,59,48,0.1)",
+            color: sube ? "#34C759" : "#ff3b30",
+            borderRadius: "6px", padding: "0.15rem 0.4rem",
+            fontSize: "0.75rem", fontWeight: 700,
+          }}>
+            {sube ? "↑" : "↓"} {Math.abs(diff).toFixed(1)}%
+          </span>
+          <span style={{ color: "#6e6e73", fontSize: "0.75rem" }}>vs período anterior</span>
+        </div>
+        <div style={{ fontSize: "0.75rem", color: "#6e6e73", marginTop: "0.2rem" }}>Anterior: {formatMoney(anterior)}</div>
+      </div>
+    );
+  }
+
+  // Separar datos semana actual vs anterior para gráfica
+  const dataSemanaActual = datos.filter(d => d.semana === "actual");
+  const dataSemanaAnterior = datos.filter(d => d.semana === "anterior");
+  const chartMerged = dataSemanaActual.map((d, i) => ({
+    dia: d.fecha,
+    actual: d.valor,
+    anterior: dataSemanaAnterior[i]?.valor || 0,
+  }));
+
+  return (
+    <div style={{ marginBottom: "1.5rem" }}>
+      {/* Cards comparativas */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem", marginBottom: "1.25rem" }}>
+        {loading ? (
+          [1, 2].map(i => <div key={i} style={{ background: "#fff", borderRadius: "16px", padding: "1.25rem", height: 100, boxShadow: "0 2px 12px rgba(0,0,0,0.04)" }} />)
+        ) : (
+          <>
+            <Tendencia actual={semanaActual} anterior={semanaAnterior} label="Esta semana" />
+            <Tendencia actual={mesActual} anterior={mesAnterior} label="Este mes" />
+          </>
+        )}
+      </div>
+
+      {/* Gráfica de línea tipo bolsa */}
+      <div style={{ background: "#fff", borderRadius: "16px", padding: "1.5rem", boxShadow: "0 2px 12px rgba(0,0,0,0.04)" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
+          <div style={{ fontSize: "0.78rem", fontWeight: 600, color: "#6e6e73", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+            Esta semana vs semana anterior
+          </div>
+          <div style={{ display: "flex", gap: "1rem", fontSize: "0.75rem" }}>
+            <span style={{ display: "flex", alignItems: "center", gap: "0.3rem", color: "#6e6e73" }}>
+              <div style={{ width: 12, height: 2, background: "#007AFF", borderRadius: 2 }} /> Esta semana
+            </span>
+            <span style={{ display: "flex", alignItems: "center", gap: "0.3rem", color: "#6e6e73" }}>
+              <div style={{ width: 12, height: 2, background: "#e5e5ea", borderRadius: 2, borderStyle: "dashed" }} /> Semana anterior
+            </span>
+          </div>
+        </div>
+        {loading ? (
+          <div style={{ textAlign: "center", color: "#6e6e73", padding: "2rem" }}>Cargando...</div>
+        ) : (
+          <ResponsiveContainer width="100%" height={200}>
+            <LineChart data={chartMerged}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f5f5f7" />
+              <XAxis dataKey="dia" tick={{ fontSize: 10, fill: "#6e6e73" }} />
+              <YAxis tick={{ fontSize: 10, fill: "#6e6e73" }} tickFormatter={v => "$" + v.toFixed(0)} />
+              <Tooltip formatter={v => formatMoney(v)} contentStyle={{ borderRadius: "10px", border: "none", boxShadow: "0 4px 16px rgba(0,0,0,0.1)" }} />
+              <Line type="monotone" dataKey="actual" name="Esta semana" stroke="#007AFF" strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="anterior" name="Semana anterior" stroke="#e5e5ea" strokeWidth={2} dot={false} strokeDasharray="5 5" />
+            </LineChart>
+          </ResponsiveContainer>
+        )}
+      </div>
+    </div>
+  );
+}
+
+
 // == Dashboard ═══════════════════════════════════════════════
 function Dashboard({ user }) {
   const [locales, setLocales] = useState([]);
   const [deptos, setDeptos] = useState([]);
   const [loading, setLoading] = useState(true);
+   const ultimaOrdenRef = useRef(null);
+   const ordenesRef = useRef([]);
+
+    useEffect(() => {
+    if ("Notification" in window) {
+      Notification.requestPermission();
+    }
+  }, []);
+
+   
 
   function cargarDatos() {
     const hoy = fechaHoy();
@@ -734,6 +906,19 @@ function Dashboard({ user }) {
       setLoading(false);
     });
   }
+
+  const todasOrdenes = [...localesData, ...deptosData];
+  const ultima = todasOrdenes.sort((a, b) => new Date(b.creado_en) - new Date(a.creado_en))[0];
+
+if (ultimaOrdenRef.current && ultima && ultima.id !== ultimaOrdenRef.current) {
+  if (Notification.permission === "granted") {
+    new Notification("🛒 Nueva orden!", {
+      body: ultima.numero_ficha + " — " + (ultima.nombre_cliente || "Sin nombre") + " — " + ultima.total_pagar,
+      icon: "/logo.png",
+    });
+  }
+}
+ultimaOrdenRef.current = ultima?.id;
 
   useEffect(() => {
     cargarDatos();
@@ -767,6 +952,10 @@ function Dashboard({ user }) {
             ¿Cuántas ventas hicimos hoy?
           </p>
         </div>
+
+
+
+
 
         {/* Cards principales */}
         {loading ? (
@@ -1063,107 +1252,328 @@ function AdminEstadisticas() {
   );
 }
 
+// == PerfilVendedor =========================================
+function PerfilVendedor({ vendedor, onClose }) {
+  const [ordenes, setOrdenes] = useState([]);
+  const [todos, setTodos] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [rango, setRango] = useState("mes");
+  const [tab, setTab] = useState("ordenes");
+
+  useEffect(() => { cargarDatos(); }, [rango]);
+
+  async function cargarDatos() {
+    setLoading(true);
+    const hoy = new Date();
+    let desde;
+    if (rango === "semana") {
+      desde = new Date(hoy); desde.setDate(hoy.getDate() - 7);
+    } else if (rango === "mes") {
+      desde = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+    } else {
+      desde = new Date(hoy.getFullYear(), 0, 1);
+    }
+    const desdeStr = desde.toISOString().split("T")[0];
+    const nombre = encodeURIComponent(vendedor);
+
+    const [resL, resD, resLTodo, resDTodo] = await Promise.all([
+      fetch(SUPABASE_URL + "/rest/v1/ordenes_locales?fecha_orden=gte." + desdeStr + "&quien_ingresa=eq." + nombre + "&order=creado_en.desc", { headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY } }),
+      fetch(SUPABASE_URL + "/rest/v1/ordenes_departamentales?fecha_orden=gte." + desdeStr + "&quien_ingresa=eq." + nombre + "&order=creado_en.desc", { headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY } }),
+      fetch(SUPABASE_URL + "/rest/v1/ordenes_locales?quien_ingresa=eq." + nombre, { headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY } }),
+      fetch(SUPABASE_URL + "/rest/v1/ordenes_departamentales?quien_ingresa=eq." + nombre, { headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY } }),
+    ]);
+
+    const l = await resL.json();
+    const d = await resD.json();
+    const lTodo = await resLTodo.json();
+    const dTodo = await resDTodo.json();
+
+    setOrdenes([...l, ...d].sort((a, b) => new Date(b.creado_en) - new Date(a.creado_en)));
+    setTodos([...lTodo, ...dTodo]);
+    setLoading(false);
+  }
+
+  const ordenesActivas = ordenes.filter(o => o.estado !== "cancelada");
+  const totalVendido = ordenesActivas.reduce((s, o) => {
+    const envio = o.departamento ? ENVIO_DEPTO : (o.costo_envio || 0);
+    return s + parseMonto(o.total_pagar) - envio;
+  }, 0);
+  const comision = totalVendido * COMISION;
+  const totalHistorico = todos.filter(o => o.estado !== "cancelada").reduce((s, o) => {
+    const envio = o.departamento ? ENVIO_DEPTO : (o.costo_envio || 0);
+    return s + parseMonto(o.total_pagar) - envio;
+  }, 0);
+
+  // Ventas por día para gráfica
+  const ventasPorDia = {};
+  ordenesActivas.forEach(o => {
+    if (!ventasPorDia[o.fecha_orden]) ventasPorDia[o.fecha_orden] = 0;
+    const envio = o.departamento ? ENVIO_DEPTO : (o.costo_envio || 0);
+    ventasPorDia[o.fecha_orden] += parseMonto(o.total_pagar) - envio;
+  });
+  const chartData = Object.entries(ventasPorDia).map(([fecha, total]) => ({ fecha, total })).sort((a, b) => a.fecha.localeCompare(b.fecha));
+
+  const btnStyle = (active) => ({
+    padding: "0.4rem 0.85rem", borderRadius: "8px",
+    background: active ? "#007AFF" : "#f5f5f7",
+    color: active ? "#fff" : "#6e6e73",
+    border: "none", cursor: "pointer", fontSize: "0.82rem",
+    fontWeight: active ? 600 : 400, fontFamily: "'Inter', sans-serif",
+  });
+
+  const tabStyle = (active) => ({
+    padding: "0.45rem 1rem", borderRadius: "8px", border: "none",
+    background: active ? "#007AFF" : "transparent",
+    color: active ? "#fff" : "#6e6e73",
+    fontWeight: active ? 600 : 400, fontSize: "0.85rem", cursor: "pointer",
+    fontFamily: "'Inter', sans-serif",
+  });
+
+  return (
+    <div style={{
+      position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+      background: "rgba(0,0,0,0.4)", backdropFilter: "blur(4px)",
+      zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center",
+      padding: "1.5rem", fontFamily: "'Inter', sans-serif",
+    }} onClick={onClose}>
+      <div style={{
+        background: "#f5f5f7", borderRadius: "20px",
+        width: "100%", maxWidth: 680,
+        maxHeight: "90vh", display: "flex", flexDirection: "column",
+        boxShadow: "0 20px 60px rgba(0,0,0,0.2)",
+        overflow: "hidden",
+      }} onClick={e => e.stopPropagation()}>
+
+        {/* Header */}
+        <div style={{ background: "#1c1c1e", padding: "1.5rem", position: "relative" }}>
+          <button onClick={onClose} style={{ position: "absolute", top: "1rem", right: "1rem", background: "rgba(255,255,255,0.1)", border: "none", borderRadius: "50%", width: 32, height: 32, cursor: "pointer", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
+          <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "1.25rem" }}>
+            <div style={{ width: 52, height: 52, borderRadius: "50%", background: "#007AFF", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: "1.2rem", fontWeight: 700 }}>
+              {vendedor.charAt(0)}
+            </div>
+            <div>
+              <h2 style={{ color: "#fff", fontSize: "1.2rem", fontWeight: 700, margin: 0 }}>{vendedor}</h2>
+              <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "0.82rem", margin: "0.2rem 0 0" }}>Vendedor · {todos.length} órdenes históricas</p>
+            </div>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.75rem" }}>
+            {[
+              { label: "Vendido", value: formatMoney(totalVendido) },
+              { label: "Comisión", value: formatMoney(comision), green: true },
+              { label: "Histórico", value: formatMoney(totalHistorico) },
+            ].map((card, i) => (
+              <div key={i} style={{ background: "rgba(255,255,255,0.08)", borderRadius: "12px", padding: "0.85rem 1rem" }}>
+                <div style={{ fontSize: "0.68rem", color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.25rem" }}>{card.label}</div>
+                <div style={{ fontSize: "1.1rem", fontWeight: 700, color: card.green ? "#34C759" : "#fff" }}>{card.value}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Controles */}
+        <div style={{ background: "#fff", padding: "0.75rem 1.25rem", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #f5f5f7" }}>
+          <div style={{ display: "flex", gap: "0.25rem" }}>
+            <button onClick={() => setTab("ordenes")} style={tabStyle(tab === "ordenes")}>Órdenes</button>
+            <button onClick={() => setTab("grafica")} style={tabStyle(tab === "grafica")}>Gráfica</button>
+          </div>
+          <div style={{ display: "flex", gap: "0.35rem", background: "#f5f5f7", borderRadius: "10px", padding: "0.25rem" }}>
+            {["semana", "mes", "año"].map(r => <button key={r} onClick={() => setRango(r)} style={btnStyle(rango === r)}>{r}</button>)}
+          </div>
+        </div>
+
+        {/* Contenido */}
+        <div style={{ flex: 1, overflowY: "auto", padding: "1.25rem" }}>
+          {loading ? (
+            <div style={{ textAlign: "center", color: "#6e6e73", padding: "3rem" }}>Cargando...</div>
+          ) : tab === "grafica" ? (
+            <div style={{ background: "#fff", borderRadius: "16px", padding: "1.25rem", boxShadow: "0 2px 12px rgba(0,0,0,0.04)" }}>
+              <div style={{ fontSize: "0.78rem", fontWeight: 600, color: "#6e6e73", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "1rem" }}>Ventas por día</div>
+              {chartData.length === 0 ? (
+                <div style={{ textAlign: "center", color: "#6e6e73", padding: "2rem" }}>Sin datos</div>
+              ) : (
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={chartData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f5f5f7" />
+                    <XAxis dataKey="fecha" tick={{ fontSize: 10, fill: "#6e6e73" }} />
+                    <YAxis tick={{ fontSize: 10, fill: "#6e6e73" }} />
+                    <Tooltip formatter={v => formatMoney(v)} contentStyle={{ borderRadius: "10px", border: "none", boxShadow: "0 4px 16px rgba(0,0,0,0.1)" }} />
+                    <Bar dataKey="total" name="Ventas" fill="#007AFF" radius={[6, 6, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+              {ordenes.length === 0 ? (
+                <div style={{ background: "#fff", borderRadius: "16px", padding: "2rem", textAlign: "center", color: "#6e6e73" }}>No hay órdenes en este período</div>
+              ) : ordenes.map((o, i) => {
+                const esDep = !!o.departamento;
+                const envio = esDep ? ENVIO_DEPTO : (o.costo_envio || 0);
+                const neto = parseMonto(o.total_pagar) - envio;
+                const cancelada = o.estado === "cancelada";
+                return (
+                  <div key={o.id} style={{ background: "#fff", borderRadius: "12px", padding: "1rem 1.25rem", boxShadow: "0 2px 8px rgba(0,0,0,0.04)", opacity: cancelada ? 0.5 : 1, borderLeft: cancelada ? "3px solid #ff3b30" : "3px solid transparent" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                      <div>
+                        <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", marginBottom: "0.25rem" }}>
+                          <span style={{ background: esDep ? "rgba(88,86,214,0.1)" : "rgba(0,122,255,0.1)", color: esDep ? "#5856D6" : "#007AFF", borderRadius: "6px", padding: "0.15rem 0.4rem", fontSize: "0.68rem", fontWeight: 700 }}>{o.numero_ficha}</span>
+                          {cancelada && <span style={{ background: "#fff2f2", color: "#ff3b30", borderRadius: "6px", padding: "0.15rem 0.4rem", fontSize: "0.68rem", fontWeight: 600 }}>Cancelada</span>}
+                        </div>
+                        <div style={{ fontWeight: 600, color: "#1d1d1f", fontSize: "0.88rem" }}>{o.nombre_cliente || "Sin nombre"}</div>
+                        <div style={{ color: "#6e6e73", fontSize: "0.75rem", marginTop: "0.1rem" }}>{o.fecha_orden} · {esDep ? o.departamento : o.municipio}</div>
+                      </div>
+                      <div style={{ textAlign: "right" }}>
+                        <div style={{ fontWeight: 700, color: "#1d1d1f", fontSize: "1rem" }}>{o.total_pagar}</div>
+                        <div style={{ color: "#34C759", fontSize: "0.75rem", fontWeight: 600 }}>+{formatMoney(neto * COMISION)}</div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
 // ══ AdminVendedores ═══════════════════════════════════════
 function AdminVendedores() {
   const [locales, setLocales] = useState([]);
   const [deptos, setDeptos] = useState([]);
+  const [todosVendedores, setTodosVendedores] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filtroFecha, setFiltroFecha] = useState(fechaHoy());
   const [busqueda, setBusqueda] = useState("");
+  const [perfilVendedor, setPerfilVendedor] = useState(null);
+
+  const VENDEDORES_EXTERNOS = [
+    "Maressa (Vend)",
+    "Yanci (Vend)",
+    "Sara Eunice (Vend)",
+    "Kevin (Vend)",
+    "Marisol (Vend)",
+    "Herbert (Vend)",
+  ];
 
   useEffect(() => { cargarTodo(); }, [filtroFecha]);
 
   async function cargarTodo() {
     setLoading(true);
-    const [resL, resD] = await Promise.all([
-      fetch(SUPABASE_URL + "/rest/v1/ordenes_locales?fecha_orden=eq." + filtroFecha, { headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY } }),
-      fetch(SUPABASE_URL + "/rest/v1/ordenes_departamentales?fecha_orden=eq." + filtroFecha, { headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY } }),
+    const [resL, resD, resVendedores] = await Promise.all([
+      fetch(SUPABASE_URL + "/rest/v1/ordenes_locales?fecha_orden=eq." + filtroFecha, {
+        headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
+      }),
+      fetch(SUPABASE_URL + "/rest/v1/ordenes_departamentales?fecha_orden=eq." + filtroFecha, {
+        headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
+      }),
+      fetch(SUPABASE_URL + "/rest/v1/usuarios?rol=eq.vendedor&activo=eq.true", {
+        headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
+      }),
     ]);
     setLocales(await resL.json());
     setDeptos(await resD.json());
+    setTodosVendedores(await resVendedores.json());
     setLoading(false);
   }
 
   const porVendedor = {};
   locales.forEach(o => {
     const v = o.quien_ingresa || "Sin asignar";
-    const VENDEDORES_EXTERNOS = [
-          "Maressa (Vend)",
-          "Yanci (Vend)",
-          "Sara Eunice (Vend)",
-          "Kevin (Vend)",
-          "Marisol (Vend)",
-          "Herbert (Vend)",
-      ];
-    if (!VENDEDORES_EXTERNOS.includes(v)) return;  
-    if (v.includes("Tecno Gadget")) return; // Excluir órdenes de Tecno Gadget
-    if (v.includes("Caleb (Venta Propia)")) return; // Excluir órdenes de Caleb
+    if (!VENDEDORES_EXTERNOS.includes(v)) return;
     if (!porVendedor[v]) porVendedor[v] = { vendedor: v, ordenes: 0, total: 0 };
     porVendedor[v].ordenes++;
     porVendedor[v].total += parseMonto(o.total_pagar) - (o.costo_envio || 0);
   });
   deptos.forEach(o => {
     const v = o.quien_ingresa || "Sin asignar";
-    const VENDEDORES_EXTERNOS = [
-  "Maressa (Vend)",
-  "Yanci (Vend)",
-  "Sara Eunice (Vend)",
-  "Kevin (Vend)",
-  "Marisol (Vend)",
-  "Herbert (Vend)",
-];
-    
     if (!VENDEDORES_EXTERNOS.includes(v)) return;
-    if (v.includes("TecnoGadget")) return; // Excluir órdenes de TecnoGadget
-    if (v.includes("Caleb (Venta Propia)")) return; // Excluir órdenes de Caleb 
     if (!porVendedor[v]) porVendedor[v] = { vendedor: v, ordenes: 0, total: 0 };
     porVendedor[v].ordenes++;
     porVendedor[v].total += parseMonto(o.total_pagar) - ENVIO_DEPTO;
   });
 
+  const vendedoresFiltrados = todosVendedores
+    .filter(u => VENDEDORES_EXTERNOS.includes(u.nombre))
+    .filter(u => u.nombre.toLowerCase().includes(busqueda.toLowerCase()));
+
   return (
     <div style={{ maxWidth: 1200, margin: "0 auto", padding: "2rem 1.5rem" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem", flexWrap: "wrap", gap: "0.75rem" }}>
         <h2 style={{ fontSize: "1.5rem", fontWeight: 700, color: "#1d1d1f", margin: 0, letterSpacing: "-0.02em" }}>Vendedores</h2>
-        <input type="date" value={filtroFecha} onChange={e => setFiltroFecha(e.target.value)} />
-        <input placeholder="Buscar vendedor..." value={busqueda} onChange={e => setBusqueda(e.target.value)} style={{ padding: "0.5rem 0.85rem", border: "1px solid #e5e5ea", borderRadius: "10px", fontSize: "0.85rem", background: "#fff", outline: "none", fontFamily: "'Inter', sans-serif" }} />
+        <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
+          <input
+            placeholder="Buscar vendedor..."
+            value={busqueda}
+            onChange={e => setBusqueda(e.target.value)}
+            style={{ padding: "0.5rem 0.85rem", border: "1px solid #e5e5ea", borderRadius: "10px", fontSize: "0.85rem", background: "#fff", outline: "none", fontFamily: "'Inter', sans-serif" }}
+          />
+          <input
+            type="date"
+            value={filtroFecha}
+            onChange={e => setFiltroFecha(e.target.value)}
+            style={{ padding: "0.5rem 0.85rem", border: "1px solid #e5e5ea", borderRadius: "10px", fontSize: "0.85rem", background: "#fff", outline: "none" }}
+          />
+        </div>
       </div>
 
-      {loading ? <div style={{ textAlign: "center", color: "#6e6e73", padding: "3rem" }}>Cargando...</div> : (
+      {loading ? (
+        <div style={{ textAlign: "center", color: "#6e6e73", padding: "3rem" }}>Cargando...</div>
+      ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1rem" }}>
-          {Object.values(porVendedor)
-          .filter(v => v.vendedor.toLowerCase().includes(busqueda.toLowerCase()))
-          .map((v, i) => (
-            <div key={i} style={{ background: "#fff", borderRadius: "16px", padding: "1.25rem 1.5rem", boxShadow: "0 2px 12px rgba(0,0,0,0.04)" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                <div>
-                  <div style={{ fontWeight: 600, color: "#1d1d1f", fontSize: "0.95rem" }}>{v.vendedor}</div>
-                  <div style={{ color: "#6e6e73", fontSize: "0.78rem", marginTop: "0.2rem" }}>{v.ordenes} orden{v.ordenes !== 1 ? "es" : ""}</div>
+          {vendedoresFiltrados.map((u, i) => {
+            const datos = porVendedor[u.nombre] || { ordenes: 0, total: 0 };
+            return (
+              <div key={i} onClick={() => setPerfilVendedor(u.nombre)} style={{
+                background: "#fff", borderRadius: "16px",
+                padding: "1.25rem 1.5rem",
+                boxShadow: "0 2px 12px rgba(0,0,0,0.04)",
+                cursor: "pointer",
+                transition: "transform 0.15s",
+              }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                  <div>
+                    <div style={{ fontWeight: 600, color: "#1d1d1f", fontSize: "0.95rem" }}>{u.nombre}</div>
+                    <div style={{ color: "#6e6e73", fontSize: "0.78rem", marginTop: "0.2rem" }}>{datos.ordenes} orden{datos.ordenes !== 1 ? "es" : ""} hoy</div>
+                  </div>
+                  <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#007AFF", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: "0.85rem", fontWeight: 700 }}>
+                    {u.nombre.charAt(0)}
+                  </div>
                 </div>
-                <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#007AFF", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: "0.85rem", fontWeight: 700 }}>
-                  {v.vendedor.split(" ").pop().charAt(0)}
+                <div style={{ marginTop: "1rem", paddingTop: "1rem", borderTop: "1px solid #f5f5f7", display: "flex", justifyContent: "space-between" }}>
+                  <div>
+                    <div style={{ fontSize: "0.7rem", color: "#6e6e73", textTransform: "uppercase", letterSpacing: "0.05em" }}>Total vendido</div>
+                    <div style={{ fontSize: "1.2rem", fontWeight: 700, color: "#1d1d1f", letterSpacing: "-0.02em" }}>{formatMoney(datos.total)}</div>
+                  </div>
+                  <div style={{ textAlign: "right" }}>
+                    <div style={{ fontSize: "0.7rem", color: "#6e6e73", textTransform: "uppercase", letterSpacing: "0.05em" }}>Comisión 10%</div>
+                    <div style={{ fontSize: "1.2rem", fontWeight: 700, color: "#34C759", letterSpacing: "-0.02em" }}>{formatMoney(datos.total * COMISION)}</div>
+                  </div>
                 </div>
               </div>
-              <div style={{ marginTop: "1rem", paddingTop: "1rem", borderTop: "1px solid #f5f5f7", display: "flex", justifyContent: "space-between" }}>
-                <div>
-                  <div style={{ fontSize: "0.7rem", color: "#6e6e73", textTransform: "uppercase", letterSpacing: "0.05em" }}>Total vendido</div>
-                  <div style={{ fontSize: "1.2rem", fontWeight: 700, color: "#1d1d1f", letterSpacing: "-0.02em" }}>{formatMoney(v.total)}</div>
-                </div>
-                <div style={{ textAlign: "right" }}>
-                  <div style={{ fontSize: "0.7rem", color: "#6e6e73", textTransform: "uppercase", letterSpacing: "0.05em" }}>Comisión 10%</div>
-                  <div style={{ fontSize: "1.2rem", fontWeight: 700, color: "#34C759", letterSpacing: "-0.02em" }}>{formatMoney(v.total * COMISION)}</div>
-                </div>
-              </div>
+            );
+          })}
+          {vendedoresFiltrados.length === 0 && (
+            <div style={{ background: "#fff", borderRadius: "16px", padding: "3rem", textAlign: "center", color: "#6e6e73", gridColumn: "1/-1" }}>
+              No hay vendedores
             </div>
-          ))}
-          {Object.keys(porVendedor).length === 0 && (
-            <div style={{ background: "#fff", borderRadius: "16px", padding: "3rem", textAlign: "center", color: "#6e6e73", gridColumn: "1/-1" }}>No hay órdenes para esta fecha</div>
           )}
         </div>
+      )}
+
+      {perfilVendedor && (
+        <PerfilVendedor
+          vendedor={perfilVendedor}
+          onClose={() => setPerfilVendedor(null)}
+        />
       )}
     </div>
   );
 }
+
 
 // ══ VendedorPanel ═════════════════════════════════════════
 function VendedorPanel({ user }) {
@@ -1172,11 +1582,24 @@ function VendedorPanel({ user }) {
   const [localesMes, setLocalesMes] = useState([]);
   const [deptosMes, setDeptosMes] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [filtroTipo, setFiltroTipo] = useState("dia");
   const [filtroFecha, setFiltroFecha] = useState(fechaHoy());
   const [ordenEditar, setOrdenEditar] = useState(null);
   const [tipoEditar, setTipoEditar] = useState(null);
 
   useEffect(() => { cargarMisOrdenes(); }, [filtroFecha]);
+
+  function getRangoFechas() {
+  const hoy = new Date();
+  if (filtroTipo === "dia") return { gte: filtroFecha, lte: filtroFecha };
+  if (filtroTipo === "semana") {
+    const inicio = new Date(hoy);
+    inicio.setDate(hoy.getDate() - 7);
+    return { gte: inicio.toISOString().split("T")[0], lte: fechaHoy() };
+  }
+  const inicio = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+  return { gte: inicio.toISOString().split("T")[0], lte: fechaHoy() };
+}
 
   async function cargarMisOrdenes() {
     setLoading(true);
@@ -1191,10 +1614,10 @@ function VendedorPanel({ user }) {
     const finMesAnterior = new Date(hoy.getFullYear(), hoy.getMonth(), 0).toISOString().split("T")[0];
 
     const [resL, resD, resLMes, resDMes] = await Promise.all([
-      fetch(SUPABASE_URL + "/rest/v1/ordenes_locales?fecha_orden=eq." + filtroFecha + "&quien_ingresa=eq." + nombre + "&order=creado_en.desc", { headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY } }),
-      fetch(SUPABASE_URL + "/rest/v1/ordenes_departamentales?fecha_orden=eq." + filtroFecha + "&quien_ingresa=eq." + nombre + "&order=creado_en.desc", { headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY } }),
-      fetch(SUPABASE_URL + "/rest/v1/ordenes_locales?fecha_orden=gte." + inicioMes + "&quien_ingresa=eq." + nombre, { headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY } }),
-      fetch(SUPABASE_URL + "/rest/v1/ordenes_departamentales?fecha_orden=gte." + inicioMes + "&quien_ingresa=eq." + nombre, { headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY } }),
+      fetch(SUPABASE_URL + "/rest/v1/ordenes_locales?fecha_orden=gte." + getRangoFechas().gte + "&fecha_orden=lte." + getRangoFechas().lte + "&quien_ingresa=eq." + nombre + "&order=creado_en.desc", { headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY } }),
+      fetch(SUPABASE_URL + "/rest/v1/ordenes_departamentales?fecha_orden=gte." + getRangoFechas().gte + "&fecha_orden=lte." + getRangoFechas().lte + "&quien_ingresa=eq." + nombre + "&order=creado_en.desc", { headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY } }),
+      fetch(SUPABASE_URL + "/rest/v1/ordenes_locales?fecha_orden=gte." + getRangoFechas().gte + "&fecha_orden=lte." + getRangoFechas().lte + "&quien_ingresa=eq." + nombre, { headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY } }),
+      fetch(SUPABASE_URL + "/rest/v1/ordenes_departamentales?fecha_orden=gte." + getRangoFechas().gte + "&fecha_orden=lte." + getRangoFechas().lte + "&quien_ingresa=eq." + nombre, { headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY } }),
     ]);
 
     setLocales(await resL.json());
@@ -1301,8 +1724,30 @@ function VendedorPanel({ user }) {
         {/* Filtro fecha */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
           <h2 style={{ fontSize: "1rem", fontWeight: 600, color: "#1d1d1f", margin: 0 }}>Mis órdenes</h2>
-          <input type="date" value={filtroFecha} onChange={e => setFiltroFecha(e.target.value)}
-            style={{ padding: "0.4rem 0.75rem", border: "1px solid #e5e5ea", borderRadius: "10px", fontSize: "0.82rem", background: "#fff", outline: "none", fontFamily: "'Inter', sans-serif" }} />
+          <select
+  value={filtroTipo}
+  onChange={e => setFiltroTipo(e.target.value)}
+  style={{
+    padding: "0.4rem 0.85rem",
+    border: "none",
+    borderRadius: "10px",
+    fontSize: "0.85rem",
+    background: "rgba(255,255,255,0.15)",
+    color: "#fff",
+    outline: "none",
+    fontFamily: "'Inter', sans-serif",
+    cursor: "pointer",
+    backdropFilter: "blur(10px)",
+    WebkitAppearance: "none",
+    appearance: "none",
+  }}
+>
+  <option value="dia" style={{ background: "#1c1c1e" }}>Hoy</option>
+  <option value="semana" style={{ background: "#1c1c1e" }}>Esta semana</option>
+  <option value="mes" style={{ background: "#1c1c1e" }}>Este mes</option>
+</select>
+
+            style={{ padding: "0.4rem 0.75rem", border: "1px solid #e5e5ea", borderRadius: "10px", fontSize: "0.82rem", background: "#fff", outline: "none", fontFamily: "'Inter', sans-serif" }} 
         </div>
 
         {/* Lista de órdenes */}
