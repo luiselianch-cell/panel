@@ -953,9 +953,7 @@ ultimaOrdenRef.current = ultima?.id;
           </p>
         </div>
 
-
-
-
+       <GraficasComparativas />
 
         {/* Cards principales */}
         {loading ? (
