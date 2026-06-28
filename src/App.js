@@ -1077,23 +1077,45 @@ ultimaOrdenRef.current = ultima?.id;
 
 
 // ══ AdminOrdenes ══════════════════════════════════════════
-function AdminOrdenes({ busquedaGlobal }) {
+function AdminOrdenes() {
   const [locales, setLocales] = useState([]);
   const [deptos, setDeptos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filtroFecha, setFiltroFecha] = useState(fechaHoy());
   const [filtroVendedor, setFiltroVendedor] = useState("");
   const [filtroPerfil, setFiltroPerfil] = useState("");
-  const [tab, setTab] = useState("locales");
+  const [tab, setTab] = useState("todos");
+  const [busqueda, setBusqueda] = useState("");
+  const [rangoFecha, setRangoFecha] = useState("dia");
 
-  useEffect(() => { cargarOrdenes(); }, [filtroFecha]);
+  const vendedores = [
+    "Tecno Gadget - Fer", "Tecno Gadget - Jefferson", "Tecno Gadget - Wendy",
+    "Tecno Gadget - Liss", "Tecno Gadget - Isa", "Tecno Gadget - Josue",
+    "Maressa (Vend)", "Yanci (Vend)", "Sara Eunice (Vend)",
+    "Kevin (Vend)", "Marisol (Vend)", "Herbert (Vend)",
+  ];
+
+  const perfiles = [
+    "Instagram", "Facebook", "TikTok", "WhatsApp Principal",
+    "WhatsApp Secundario", "Inbox Pagina FB", "Referido", "Otro",
+  ];
+
+  useEffect(() => { cargarOrdenes(); }, [filtroFecha, rangoFecha]);
 
   async function cargarOrdenes() {
     setLoading(true);
     try {
+      const urlFiltro = rangoFecha === "dia"
+        ? "fecha_orden=eq." + filtroFecha
+        : "fecha_orden=lte." + filtroFecha;
+
       const [resL, resD] = await Promise.all([
-        fetch(SUPABASE_URL + "/rest/v1/ordenes_locales?fecha_orden=eq." + filtroFecha + "&order=creado_en.desc", { headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY } }),
-        fetch(SUPABASE_URL + "/rest/v1/ordenes_departamentales?fecha_orden=eq." + filtroFecha + "&order=creado_en.desc", { headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY } }),
+        fetch(SUPABASE_URL + "/rest/v1/ordenes_locales?" + urlFiltro + "&order=creado_en.desc", {
+          headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
+        }),
+        fetch(SUPABASE_URL + "/rest/v1/ordenes_departamentales?" + urlFiltro + "&order=creado_en.desc", {
+          headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
+        }),
       ]);
       setLocales(await resL.json());
       setDeptos(await resD.json());
@@ -1110,62 +1132,103 @@ function AdminOrdenes({ busquedaGlobal }) {
     });
   }
 
-  const vendedores = [...new Set([...locales, ...deptos].map(o => o.quien_ingresa).filter(Boolean))];
-  const perfiles = [...new Set([...locales, ...deptos].map(o => o.perfil_salio_1 || o.perfil_salio).filter(Boolean))];
-
   function filtrar(lista) {
     return lista.filter(o => {
       if (filtroVendedor && o.quien_ingresa !== filtroVendedor) return false;
       if (filtroPerfil && (o.perfil_salio_1 || o.perfil_salio) !== filtroPerfil) return false;
+      if (busqueda) {
+        const b = busqueda.toLowerCase();
+        return (
+          (o.numero_ficha && o.numero_ficha.toLowerCase().includes(b)) ||
+          (o.nombre_cliente && o.nombre_cliente.toLowerCase().includes(b)) ||
+          (o.articulos && o.articulos.toLowerCase().includes(b))
+        );
+      }
       return true;
     });
   }
 
   const lF = filtrar(locales);
   const dF = filtrar(deptos);
-  const totalL = lF.reduce((s, o) => s + parseMonto(o.total_pagar) - (o.costo_envio || 0), 0);
-  const totalD = dF.reduce((s, o) => s + parseMonto(o.total_pagar) - ENVIO_DEPTO, 0);
+  const todosF = [...lF, ...dF].sort((a, b) => new Date(b.creado_en) - new Date(a.creado_en));
 
-  const selectStyle = { padding: "0.5rem 0.85rem", border: "1px solid #e5e5ea", borderRadius: "10px", fontSize: "0.85rem", background: "#fff", color: "#1d1d1f", outline: "none" };
+  const totalL = lF.filter(o => o.estado !== "cancelada").reduce((s, o) => s + parseMonto(o.total_pagar) - (o.costo_envio || 0), 0);
+  const totalD = dF.filter(o => o.estado !== "cancelada").reduce((s, o) => s + parseMonto(o.total_pagar) - ENVIO_DEPTO, 0);
+
+  const selectStyle = {
+    padding: "0.5rem 0.85rem", border: "1px solid #e5e5ea", borderRadius: "10px",
+    fontSize: "0.85rem", background: "#fff", color: "#1d1d1f", outline: "none",
+    fontFamily: "'Inter', sans-serif",
+  };
+
   const tabStyle = (active) => ({
     padding: "0.45rem 1rem", borderRadius: "8px", border: "none",
     background: active ? "#007AFF" : "transparent",
     color: active ? "#fff" : "#6e6e73",
     fontWeight: active ? 600 : 400, fontSize: "0.85rem", cursor: "pointer",
+    fontFamily: "'Inter', sans-serif",
   });
 
   return (
     <div style={{ maxWidth: 1200, margin: "0 auto", padding: "2rem 1.5rem" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
         <h2 style={{ fontSize: "1.5rem", fontWeight: 700, color: "#1d1d1f", margin: 0, letterSpacing: "-0.02em" }}>Órdenes</h2>
-        <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-          <input type="date" value={filtroFecha} onChange={e => setFiltroFecha(e.target.value)} style={selectStyle} />
-          <select value={filtroVendedor} onChange={e => setFiltroVendedor(e.target.value)} style={selectStyle}>
-            <option value="">Todos los vendedores</option>
-            {vendedores.map(v => <option key={v} value={v}>{v}</option>)}
-          </select>
-          <select value={filtroPerfil} onChange={e => setFiltroPerfil(e.target.value)} style={selectStyle}>
-            <option value="">Todos los perfiles</option>
-            {perfiles.map(p => <option key={p} value={p}>{p}</option>)}
-          </select>
-        </div>
       </div>
 
+      {/* Filtros */}
+      <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", marginBottom: "1.25rem" }}>
+        <input
+          type="date"
+          value={filtroFecha}
+          onChange={e => setFiltroFecha(e.target.value)}
+          style={selectStyle}
+        />
+        <button onClick={() => setRangoFecha(rangoFecha === "dia" ? "todo" : "dia")} style={{
+          padding: "0.5rem 0.85rem", border: "1px solid #e5e5ea", borderRadius: "10px",
+          fontSize: "0.85rem", background: rangoFecha === "todo" ? "#007AFF" : "#fff",
+          color: rangoFecha === "todo" ? "#fff" : "#1d1d1f", cursor: "pointer",
+          fontFamily: "'Inter', sans-serif", fontWeight: rangoFecha === "todo" ? 600 : 400,
+        }}>
+          {rangoFecha === "todo" ? "Hasta hoy" : "Solo hoy"}
+        </button>
+        <select value={filtroVendedor} onChange={e => setFiltroVendedor(e.target.value)} style={selectStyle}>
+          <option value="">Todos los vendedores</option>
+          {vendedores.map(v => <option key={v} value={v}>{v}</option>)}
+        </select>
+        <select value={filtroPerfil} onChange={e => setFiltroPerfil(e.target.value)} style={selectStyle}>
+          <option value="">Todos los perfiles</option>
+          {perfiles.map(p => <option key={p} value={p}>{p}</option>)}
+        </select>
+        <input
+          placeholder="🔍 Buscar ficha, cliente o artículo..."
+          value={busqueda}
+          onChange={e => setBusqueda(e.target.value)}
+          style={{ ...selectStyle, minWidth: 220 }}
+        />
+      </div>
+
+      {/* Stats */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "1rem", marginBottom: "1.5rem" }}>
         <StatCard label="Locales (neto)" value={formatMoney(totalL)} sub={lF.length + " órdenes"} />
         <StatCard label="Deptos (neto)" value={formatMoney(totalD)} sub={dF.length + " órdenes"} />
-        <StatCard label="Total General" value={formatMoney(totalL + totalD)} sub={(lF.length + dF.length) + " órdenes"} accent="#007AFF" />
+        <StatCard label="Total General" value={formatMoney(totalL + totalD)} sub={todosF.length + " órdenes"} accent="#007AFF" />
       </div>
 
+      {/* Tabs y tabla */}
       <div style={{ background: "#fff", borderRadius: "16px", boxShadow: "0 2px 12px rgba(0,0,0,0.04)", overflow: "hidden" }}>
         <div style={{ display: "flex", gap: "0.25rem", padding: "0.75rem 1rem", borderBottom: "1px solid #f5f5f7" }}>
+          <button onClick={() => setTab("todos")} style={tabStyle(tab === "todos")}>Todos ({todosF.length})</button>
           <button onClick={() => setTab("locales")} style={tabStyle(tab === "locales")}>Locales ({lF.length})</button>
           <button onClick={() => setTab("departamentales")} style={tabStyle(tab === "departamentales")}>Departamentales ({dF.length})</button>
         </div>
-        {loading ? <div style={{ padding: "3rem", textAlign: "center", color: "#6e6e73" }}>Cargando...</div>
+        {loading
+          ? <div style={{ padding: "3rem", textAlign: "center", color: "#6e6e73" }}>Cargando...</div>
+          : tab === "todos"
+          ? <TablaOrdenes ordenes={todosF} tipo="local" onUpdateEnvio={actualizarEnvio} esAdmin={true} onSave={cargarOrdenes} />
           : tab === "locales"
-          ? <TablaOrdenes ordenes={lF} tipo="local" onUpdateEnvio={actualizarEnvio} esAdmin={true} onSave={cargarOrdenes}/>
-          : <TablaOrdenes ordenes={dF} tipo="departamental" esAdmin={true} onSave={cargarOrdenes} />}
+          ? <TablaOrdenes ordenes={lF} tipo="local" onUpdateEnvio={actualizarEnvio} esAdmin={true} onSave={cargarOrdenes} />
+          : <TablaOrdenes ordenes={dF} tipo="departamental" esAdmin={true} onSave={cargarOrdenes} />
+        }
       </div>
     </div>
   );
