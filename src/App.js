@@ -1229,7 +1229,7 @@ function AdminOrdenes() {
           ? <TablaOrdenes ordenes={lF} tipo="local" onUpdateEnvio={actualizarEnvio} esAdmin={true} onSave={cargarOrdenes} />
           : <TablaOrdenes ordenes={dF} tipo="departamental" esAdmin={true} onSave={cargarOrdenes} />
         }
-      </div>
+      </div> 
     </div>
   );
 }
