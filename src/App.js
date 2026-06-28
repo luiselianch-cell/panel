@@ -6,7 +6,7 @@ import { useState, useEffect, useRef } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from "recharts";
 // eslint-disable-next-line no-unused-vars
 import { Home, ClipboardList, BarChart2, Users, UserCheck, Search, Menu, MessageCircle, Eye, EyeOff } from "lucide-react";
-import { Copy, XCircle, RefreshCw, Check } from "lucide-react";
+import { Copy, XCircle, RefreshCw, Check, Pencil, UserX } from "lucide-react";
 
 const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL;
 const SUPABASE_KEY = process.env.REACT_APP_SUPABASE_KEY;
@@ -2000,9 +2000,24 @@ function AdminEquipo() {
                   </td>
                   <td style={{ padding: "0.75rem 1rem" }}>
                     <div style={{ display: "flex", gap: "0.4rem" }}>
-                      <button onClick={() => handleEditar(u)} style={{ padding: "0.3rem 0.6rem", background: "#f5f5f7", border: "none", borderRadius: "6px", fontSize: "0.78rem", cursor: "pointer", color: "#007AFF", fontWeight: 500 }}>Editar</button>
-                      <button onClick={() => toggleActivo(u)} style={{ padding: "0.3rem 0.6rem", background: u.activo ? "#fff2f2" : "#f0fff4", border: "none", borderRadius: "6px", fontSize: "0.78rem", cursor: "pointer", color: u.activo ? "#ff3b30" : "#34C759", fontWeight: 500 }}>
-                        {u.activo ? "Desactivar" : "Activar"}
+                      <button onClick={() => handleEditar(u)} title="Editar" style={{
+  padding: "0.3rem", background: "#f5f5f7",
+  border: "none", borderRadius: "6px",
+  cursor: "pointer", color: "#007AFF",
+  display: "flex", alignItems: "center",
+}}>
+  <Pencil size={14} />
+</button>
+
+<button onClick={() => toggleActivo(u)} title={u.activo ? "Desactivar" : "Activar"} style={{
+  padding: "0.3rem", 
+  background: u.activo ? "#fff2f2" : "#f0fff4",
+  border: "none", borderRadius: "6px",
+  cursor: "pointer", 
+  color: u.activo ? "#ff3b30" : "#34C759",
+  display: "flex", alignItems: "center",
+}}>
+  {u.activo ? <UserX size={14} /> : <UserCheck size={14} />}
                       </button>
                     </div>
                   </td>
