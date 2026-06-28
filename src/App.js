@@ -198,42 +198,43 @@ useEffect(() => {
 
           {/* Pestañas — solo desktop y solo admin */}
           {!isMobile && user.rol === "admin" && (
-            <div style={{ display: "flex", flex: 1 }}>
-              {tabs.map(tab => (
-                <button
-  key={tab.id}
-  ref={el => tabsRef.current[tab.id] = el}
-  onClick={() => handleTabClick(tab.id)}
-  onMouseEnter={e => handleTabHover(tab.id, e)}
-  style={{
-    padding: "0.4rem 0.85rem",
-    background: "transparent",
-    color: activeTab === tab.id ? textActive : textColor,
-    border: "none",
-    borderBottom: "2px solid transparent",
-    borderRadius: "8px 8px 0 0",
-    fontWeight: activeTab === tab.id ? 600 : 400,
-    fontSize: "0.88rem",
-    cursor: "pointer",
-    display: "flex", alignItems: "center", gap: "0.35rem",
-    paddingBottom: "0.5rem",
-    fontFamily: "'Inter', sans-serif",
-    transition: "color 0.15s, background 0.15s",
-    position: "relative",
-  }}
-  onMouseOver={e => {
-    e.currentTarget.style.background = "rgba(0,122,255,0.08)";
-    e.currentTarget.style.backdropFilter = "blur(8px)";
-  }}
-  onMouseOut={e => {
-    e.currentTarget.style.background = "transparent";
-    e.currentTarget.style.backdropFilter = "none";
-  }}
->
-  {tab.icon}{tab.label}
-</button>
-              ))}
-            </div>
+            <div style={{ display: "flex", flex: 1, position: "relative" }} onMouseLeave={handleNavLeave}>
+  {tabs.map(tab => (
+    <button
+      key={tab.id}
+      ref={el => tabsRef.current[tab.id] = el}
+      onClick={() => handleTabClick(tab.id)}
+      onMouseEnter={e => handleTabHover(tab.id, e)}
+      style={{
+        padding: "0.4rem 0.85rem",
+        background: "transparent",
+        color: activeTab === tab.id ? textActive : textColor,
+        border: "none",
+        borderBottom: "2px solid transparent",
+        borderRadius: 0,
+        fontWeight: activeTab === tab.id ? 600 : 400,
+        fontSize: "0.88rem",
+        cursor: "pointer",
+        display: "flex", alignItems: "center", gap: "0.35rem",
+        paddingBottom: "0.5rem",
+        fontFamily: "'Inter', sans-serif",
+        transition: "color 0.15s",
+      }}>
+      {tab.icon}{tab.label}
+    </button>
+  ))}
+  {/* Línea deslizante */}
+  <div style={{
+    position: "absolute",
+    bottom: 0,
+    left: indicatorStyle.left,
+    width: indicatorStyle.width,
+    height: 2,
+    background: textActive,
+    borderRadius: "2px 2px 0 0",
+    transition: "left 0.2s ease, width 0.2s ease",
+  }} />
+</div>
           )}
 
           <div style={{ flex: 1 }} />
