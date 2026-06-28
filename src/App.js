@@ -12,7 +12,7 @@ const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL;
 const SUPABASE_KEY = process.env.REACT_APP_SUPABASE_KEY;
 const ENVIO_DEPTO = 3.39;
 const COMISION = 0.10;
-const LOGO_URL = "/Logo-banner.png";
+const LOGO_URL = "/Logo-banner.png";  
 const LOGO_WHITE = "Logo-White.png";
 
 const CHART_COLORS = ["#007AFF", "#34C759", "#FF9500", "#FF2D55", "#5856D6"];
@@ -134,6 +134,25 @@ function Navbar({ user, onLogout, activeTab, setActiveTab, busqueda, setBusqueda
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0 });
+  const tabsRef = useRef({});
+
+function handleTabHover(id, e) {
+  const el = tabsRef.current[id];
+  if (el) setIndicatorStyle({ left: el.offsetLeft, width: el.offsetWidth });
+}
+
+function handleNavLeave() {
+  const el = tabsRef.current[activeTab];
+  if (el) setIndicatorStyle({ left: el.offsetLeft, width: el.offsetWidth });
+}
+
+useEffect(() => {
+  const el = tabsRef.current[activeTab];
+  if (el) setIndicatorStyle({ left: el.offsetLeft, width: el.offsetWidth });
+}, [activeTab]);
+
+
 
   useEffect(() => {
     function handleResize() { setIsMobile(window.innerWidth < 768); }
@@ -181,23 +200,38 @@ function Navbar({ user, onLogout, activeTab, setActiveTab, busqueda, setBusqueda
           {!isMobile && user.rol === "admin" && (
             <div style={{ display: "flex", flex: 1 }}>
               {tabs.map(tab => (
-                <button key={tab.id} onClick={() => handleTabClick(tab.id)} style={{
-                  padding: "0.4rem 0.85rem",
-                  background: "transparent",
-                  color: activeTab === tab.id ? textActive : textColor,
-                  border: "none",
-                  borderBottom: activeTab === tab.id ? "2px solid " + textActive : "2px solid transparent",
-                  borderRadius: 0,
-                  fontWeight: activeTab === tab.id ? 600 : 400,
-                  fontSize: "0.88rem",
-                  cursor: "pointer",
-                  display: "flex", alignItems: "center", gap: "0.35rem",
-                  transition: "all 0.15s",
-                  paddingBottom: "0.5rem",
-                  fontFamily: "'Inter', sans-serif",
-                }}>
-                  {tab.icon}{tab.label}
-                </button>
+                <button
+  key={tab.id}
+  ref={el => tabsRef.current[tab.id] = el}
+  onClick={() => handleTabClick(tab.id)}
+  onMouseEnter={e => handleTabHover(tab.id, e)}
+  style={{
+    padding: "0.4rem 0.85rem",
+    background: "transparent",
+    color: activeTab === tab.id ? textActive : textColor,
+    border: "none",
+    borderBottom: "2px solid transparent",
+    borderRadius: "8px 8px 0 0",
+    fontWeight: activeTab === tab.id ? 600 : 400,
+    fontSize: "0.88rem",
+    cursor: "pointer",
+    display: "flex", alignItems: "center", gap: "0.35rem",
+    paddingBottom: "0.5rem",
+    fontFamily: "'Inter', sans-serif",
+    transition: "color 0.15s, background 0.15s",
+    position: "relative",
+  }}
+  onMouseOver={e => {
+    e.currentTarget.style.background = "rgba(0,122,255,0.08)";
+    e.currentTarget.style.backdropFilter = "blur(8px)";
+  }}
+  onMouseOut={e => {
+    e.currentTarget.style.background = "transparent";
+    e.currentTarget.style.backdropFilter = "none";
+  }}
+>
+  {tab.icon}{tab.label}
+</button>
               ))}
             </div>
           )}
