@@ -6,7 +6,7 @@ import { useState, useEffect, useRef } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from "recharts";
 // eslint-disable-next-line no-unused-vars
 import { Home, ClipboardList, BarChart2, Users, UserCheck, Search, Menu, MessageCircle, Eye, EyeOff } from "lucide-react";
-import { Copy, XCircle, RefreshCw, Check, Pencil, UserX, Download } from "lucide-react";
+import { Copy, XCircle, RefreshCw, Check, Pencil, UserX, Download, CheckCircle, Banknote } from "lucide-react";
 import * as XLSX from 'xlsx'
 
 const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL;
@@ -1396,6 +1396,8 @@ function PerfilVendedor({ vendedor, onClose }) {
   const [loading, setLoading] = useState(true);
   const [rango, setRango] = useState("mes");
   const [tab, setTab] = useState("ordenes");
+  const [pagando, setPagando] = useState(false);
+  const [pagado, setPagado] = useState(false);
 
   useEffect(() => { cargarDatos(); }, [rango]);
 
@@ -1410,6 +1412,21 @@ function PerfilVendedor({ vendedor, onClose }) {
     } else {
       desde = new Date(hoy.getFullYear(), 0, 1);
     }
+    
+    async function registrarPago() {
+  if (!window.confirm("¿Confirmar pago de comisión de " + formatMoney(comision) + "?")) return;
+  setPagando(true);
+  await fetch(SUPABASE_URL + "/rest/v1/pagos_comisiones", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
+    body: JSON.stringify({ vendedor: vendedor, monto: comision }),
+  });
+  setPagando(false);
+  setPagado(true);
+  setTimeout(() => setPagado(false), 3000);
+    }
+
+
     const desdeStr = desde.toISOString().split("T")[0];
     const nombre = encodeURIComponent(vendedor);
 
@@ -1504,9 +1521,32 @@ function PerfilVendedor({ vendedor, onClose }) {
                 <div style={{ fontSize: "0.68rem", color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.25rem" }}>{card.label}</div>
                 <div style={{ fontSize: "1.1rem", fontWeight: 700, color: card.green ? "#34C759" : "#fff" }}>{card.value}</div>
               </div>
+
+
+
             ))}
           </div>
         </div>
+<button onClick={registrarPago} disabled={pagando || comision === 0} style={{
+  marginTop: "1rem",
+  width: "100%",
+  padding: "0.75rem",
+  background: pagado ? "rgba(52,199,89,0.2)" : comision === 0 ? "rgba(255,255,255,0.05)" : "#34C759",
+  color: pagado ? "#34C759" : comision === 0 ? "rgba(255,255,255,0.3)" : "#fff",
+  border: "none", borderRadius: "12px",
+  fontWeight: 600, fontSize: "0.9rem",
+  cursor: comision === 0 ? "default" : "pointer",
+  fontFamily: "'Inter', sans-serif",
+  transition: "all 0.2s",
+  display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem",
+}}>
+  {pagado 
+  ? <span style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}><CheckCircle size={16} /> Comisión registrada</span>
+  : pagando 
+  ? "Procesando..."
+  : <span style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}><Banknote size={16} /> Marcar comisión como pagada — {formatMoney(comision)}</span>
+}
+</button>
 
         {/* Controles */}
         <div style={{ background: "#fff", padding: "0.75rem 1.25rem", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #f5f5f7" }}>
