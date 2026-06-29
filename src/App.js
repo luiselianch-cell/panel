@@ -1886,7 +1886,7 @@ function VendedorPanel({ user }) {
   <option value="mes" style={{ background: "#1c1c1e" }}>Este mes</option>
 </select>
 
-            style={{ padding: "0.4rem 0.75rem", border: "1px solid #e5e5ea", borderRadius: "10px", fontSize: "0.82rem", background: "#fff", outline: "none", fontFamily: "'Inter', sans-serif" }} 
+            
         </div>
 
         {/* Lista de órdenes */}
