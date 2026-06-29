@@ -1446,7 +1446,7 @@ async function registrarPago() {
     headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
     body: JSON.stringify({ vendedor: vendedor, monto: comision }),
   });
-  ssetPagando(false);
+  setPagando(false);
   setPagado(true);
   setComisionPagada(true);
   setShowConfirm(false);
