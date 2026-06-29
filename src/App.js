@@ -1526,7 +1526,6 @@ function PerfilVendedor({ vendedor, onClose }) {
 
             ))}
           </div>
-        </div>
 <button onClick={registrarPago} disabled={pagando || comision === 0} style={{
   marginTop: "1rem",
   width: "100%",
@@ -1547,6 +1546,7 @@ function PerfilVendedor({ vendedor, onClose }) {
   : <span style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}><Banknote size={16} /> Marcar comisión como pagada — {formatMoney(comision)}</span>
 }
 </button>
+</div>
 
         {/* Controles */}
         <div style={{ background: "#fff", padding: "0.75rem 1.25rem", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #f5f5f7" }}>
