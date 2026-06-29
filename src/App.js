@@ -1661,6 +1661,8 @@ function PerfilVendedor({ vendedor, onClose }) {
 function AdminVendedores() {
   const [locales, setLocales] = useState([]);
   const [deptos, setDeptos] = useState([]);
+  const [localesMes, setLocalesMes] = useState([]);
+  const [deptosMes, setDeptosMes] = useState([]);
   const [todosVendedores, setTodosVendedores] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filtroFecha, setFiltroFecha] = useState(fechaHoy());
@@ -1681,11 +1683,20 @@ function AdminVendedores() {
 
   async function cargarTodo() {
     setLoading(true);
-    const [resL, resD, resVendedores] = await Promise.all([
+    const hoy = new Date();
+    const inicioMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString().split("T")[0];
+
+    const [resL, resD, resLMes, resDMes, resVendedores] = await Promise.all([
       fetch(SUPABASE_URL + "/rest/v1/ordenes_locales?fecha_orden=eq." + filtroFecha, {
         headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
       }),
       fetch(SUPABASE_URL + "/rest/v1/ordenes_departamentales?fecha_orden=eq." + filtroFecha, {
+        headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
+      }),
+      fetch(SUPABASE_URL + "/rest/v1/ordenes_locales?fecha_orden=gte." + inicioMes, {
+        headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
+      }),
+      fetch(SUPABASE_URL + "/rest/v1/ordenes_departamentales?fecha_orden=gte." + inicioMes, {
         headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
       }),
       fetch(SUPABASE_URL + "/rest/v1/usuarios?rol=eq.vendedor&activo=eq.true", {
@@ -1694,10 +1705,13 @@ function AdminVendedores() {
     ]);
     setLocales(await resL.json());
     setDeptos(await resD.json());
+    setLocalesMes(await resLMes.json());
+    setDeptosMes(await resDMes.json());
     setTodosVendedores(await resVendedores.json());
     setLoading(false);
   }
 
+  // Ventas del día
   const porVendedor = {};
   locales.forEach(o => {
     const v = o.quien_ingresa || "Sin asignar";
@@ -1714,12 +1728,36 @@ function AdminVendedores() {
     porVendedor[v].total += parseMonto(o.total_pagar) - ENVIO_DEPTO;
   });
 
+  // Ventas del mes para ranking
+  const porVendedorMes = {};
+  localesMes.filter(o => o.estado !== "cancelada").forEach(o => {
+    const v = o.quien_ingresa || "Sin asignar";
+    if (!VENDEDORES_EXTERNOS.includes(v)) return;
+    if (!porVendedorMes[v]) porVendedorMes[v] = { vendedor: v, total: 0 };
+    porVendedorMes[v].total += parseMonto(o.total_pagar) - (o.costo_envio || 0);
+  });
+  deptosMes.filter(o => o.estado !== "cancelada").forEach(o => {
+    const v = o.quien_ingresa || "Sin asignar";
+    if (!VENDEDORES_EXTERNOS.includes(v)) return;
+    if (!porVendedorMes[v]) porVendedorMes[v] = { vendedor: v, total: 0 };
+    porVendedorMes[v].total += parseMonto(o.total_pagar) - ENVIO_DEPTO;
+  });
+
+  const rankingMes = Object.values(porVendedorMes)
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 3);
+
+  const medallas = ["🥇", "🥈", "🥉"];
+  const coloresPodio = ["#FFD700", "#C0C0C0", "#CD7F32"];
+  const altosPodio = [80, 60, 45];
+
   const vendedoresFiltrados = todosVendedores
     .filter(u => VENDEDORES_EXTERNOS.includes(u.nombre))
     .filter(u => u.nombre.toLowerCase().includes(busqueda.toLowerCase()));
 
   return (
     <div style={{ maxWidth: 1200, margin: "0 auto", padding: "2rem 1.5rem" }}>
+      {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem", flexWrap: "wrap", gap: "0.75rem" }}>
         <h2 style={{ fontSize: "1.5rem", fontWeight: 700, color: "#1d1d1f", margin: 0, letterSpacing: "-0.02em" }}>Vendedores</h2>
         <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
@@ -1741,45 +1779,83 @@ function AdminVendedores() {
       {loading ? (
         <div style={{ textAlign: "center", color: "#6e6e73", padding: "3rem" }}>Cargando...</div>
       ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1rem" }}>
-          {vendedoresFiltrados.map((u, i) => {
-            const datos = porVendedor[u.nombre] || { ordenes: 0, total: 0 };
-            return (
-              <div key={i} onClick={() => setPerfilVendedor(u.nombre)} style={{
-                background: "#fff", borderRadius: "16px",
-                padding: "1.25rem 1.5rem",
-                boxShadow: "0 2px 12px rgba(0,0,0,0.04)",
-                cursor: "pointer",
-                transition: "transform 0.15s",
-              }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                  <div>
-                    <div style={{ fontWeight: 600, color: "#1d1d1f", fontSize: "0.95rem" }}>{u.nombre}</div>
-                    <div style={{ color: "#6e6e73", fontSize: "0.78rem", marginTop: "0.2rem" }}>{datos.ordenes} orden{datos.ordenes !== 1 ? "es" : ""} hoy</div>
-                  </div>
-                  <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#007AFF", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: "0.85rem", fontWeight: 700 }}>
-                    {u.nombre.charAt(0)}
-                  </div>
-                </div>
-                <div style={{ marginTop: "1rem", paddingTop: "1rem", borderTop: "1px solid #f5f5f7", display: "flex", justifyContent: "space-between" }}>
-                  <div>
-                    <div style={{ fontSize: "0.7rem", color: "#6e6e73", textTransform: "uppercase", letterSpacing: "0.05em" }}>Total vendido</div>
-                    <div style={{ fontSize: "1.2rem", fontWeight: 700, color: "#1d1d1f", letterSpacing: "-0.02em" }}>{formatMoney(datos.total)}</div>
-                  </div>
-                  <div style={{ textAlign: "right" }}>
-                    <div style={{ fontSize: "0.7rem", color: "#6e6e73", textTransform: "uppercase", letterSpacing: "0.05em" }}>Comisión 10%</div>
-                    <div style={{ fontSize: "1.2rem", fontWeight: 700, color: "#34C759", letterSpacing: "-0.02em" }}>{formatMoney(datos.total * COMISION)}</div>
-                  </div>
-                </div>
+        <>
+          {/* Podio del mes */}
+          {rankingMes.length > 0 && (
+            <div style={{ background: "#fff", borderRadius: "16px", padding: "1.5rem", boxShadow: "0 2px 12px rgba(0,0,0,0.04)", marginBottom: "1.5rem" }}>
+              <div style={{ fontSize: "0.72rem", fontWeight: 600, color: "#6e6e73", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "1.5rem", textAlign: "center" }}>
+                🏆 Ranking del mes
               </div>
-            );
-          })}
-          {vendedoresFiltrados.length === 0 && (
-            <div style={{ background: "#fff", borderRadius: "16px", padding: "3rem", textAlign: "center", color: "#6e6e73", gridColumn: "1/-1" }}>
-              No hay vendedores
+              <div style={{ display: "flex", justifyContent: "center", alignItems: "flex-end", gap: "1rem" }}>
+                {/* Reordenar para que el 1ro esté en el centro */}
+                {[rankingMes[1], rankingMes[0], rankingMes[2]].map((v, i) => {
+                  if (!v) return <div key={i} style={{ width: 120 }} />;
+                  const posReal = i === 0 ? 1 : i === 1 ? 0 : 2;
+                  return (
+                    <div key={i} onClick={() => setPerfilVendedor(v.vendedor)} style={{ display: "flex", flexDirection: "column", alignItems: "center", cursor: "pointer", width: 120 }}>
+                      <div style={{ fontSize: "1.5rem", marginBottom: "0.25rem" }}>{medallas[posReal]}</div>
+                      <div style={{ width: 48, height: 48, borderRadius: "50%", background: coloresPodio[posReal], display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: "1.1rem", fontWeight: 700, marginBottom: "0.5rem", boxShadow: "0 4px 12px rgba(0,0,0,0.15)" }}>
+                        {v.vendedor.charAt(0)}
+                      </div>
+                      <div style={{ fontSize: "0.78rem", fontWeight: 600, color: "#1d1d1f", textAlign: "center", marginBottom: "0.25rem" }}>
+                        {v.vendedor.replace("(Vend)", "").trim()}
+                      </div>
+                      <div style={{ fontSize: "0.95rem", fontWeight: 700, color: coloresPodio[posReal] }}>{formatMoney(v.total)}</div>
+                      <div style={{
+                        width: "100%", marginTop: "0.75rem",
+                        height: altosPodio[posReal],
+                        background: coloresPodio[posReal] + "22",
+                        borderRadius: "8px 8px 0 0",
+                        border: "2px solid " + coloresPodio[posReal] + "44",
+                      }} />
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
-        </div>
+
+          {/* Cards vendedores */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1rem" }}>
+            {vendedoresFiltrados.map((u, i) => {
+              const datos = porVendedor[u.nombre] || { ordenes: 0, total: 0 };
+              return (
+                <div key={i} onClick={() => setPerfilVendedor(u.nombre)} style={{
+                  background: "#fff", borderRadius: "16px",
+                  padding: "1.25rem 1.5rem",
+                  boxShadow: "0 2px 12px rgba(0,0,0,0.04)",
+                  cursor: "pointer",
+                  transition: "transform 0.15s",
+                }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                    <div>
+                      <div style={{ fontWeight: 600, color: "#1d1d1f", fontSize: "0.95rem" }}>{u.nombre}</div>
+                      <div style={{ color: "#6e6e73", fontSize: "0.78rem", marginTop: "0.2rem" }}>{datos.ordenes} orden{datos.ordenes !== 1 ? "es" : ""} hoy</div>
+                    </div>
+                    <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#007AFF", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: "0.85rem", fontWeight: 700 }}>
+                      {u.nombre.charAt(0)}
+                    </div>
+                  </div>
+                  <div style={{ marginTop: "1rem", paddingTop: "1rem", borderTop: "1px solid #f5f5f7", display: "flex", justifyContent: "space-between" }}>
+                    <div>
+                      <div style={{ fontSize: "0.7rem", color: "#6e6e73", textTransform: "uppercase", letterSpacing: "0.05em" }}>Total vendido</div>
+                      <div style={{ fontSize: "1.2rem", fontWeight: 700, color: "#1d1d1f", letterSpacing: "-0.02em" }}>{formatMoney(datos.total)}</div>
+                    </div>
+                    <div style={{ textAlign: "right" }}>
+                      <div style={{ fontSize: "0.7rem", color: "#6e6e73", textTransform: "uppercase", letterSpacing: "0.05em" }}>Comisión 10%</div>
+                      <div style={{ fontSize: "1.2rem", fontWeight: 700, color: "#34C759", letterSpacing: "-0.02em" }}>{formatMoney(datos.total * COMISION)}</div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+            {vendedoresFiltrados.length === 0 && (
+              <div style={{ background: "#fff", borderRadius: "16px", padding: "3rem", textAlign: "center", color: "#6e6e73", gridColumn: "1/-1" }}>
+                No hay vendedores
+              </div>
+            )}
+          </div>
+        </>
       )}
 
       {perfilVendedor && (
@@ -1791,6 +1867,7 @@ function AdminVendedores() {
     </div>
   );
 }
+
 
 
 // ══ VendedorPanel ═════════════════════════════════════════
