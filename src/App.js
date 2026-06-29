@@ -1413,18 +1413,7 @@ function PerfilVendedor({ vendedor, onClose }) {
       desde = new Date(hoy.getFullYear(), 0, 1);
     }
     
-    async function registrarPago() {
-  if (!window.confirm("¿Confirmar pago de comisión de " + formatMoney(comision) + "?")) return;
-  setPagando(true);
-  await fetch(SUPABASE_URL + "/rest/v1/pagos_comisiones", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
-    body: JSON.stringify({ vendedor: vendedor, monto: comision }),
-  });
-  setPagando(false);
-  setPagado(true);
-  setTimeout(() => setPagado(false), 3000);
-    }
+    
 
 
     const desdeStr = desde.toISOString().split("T")[0];
@@ -1447,6 +1436,20 @@ function PerfilVendedor({ vendedor, onClose }) {
     setLoading(false);
   }
 
+async function registrarPago() {
+  if (!window.confirm("¿Confirmar pago de comisión de " + formatMoney(comision) + "?")) return;
+  setPagando(true);
+  await fetch(SUPABASE_URL + "/rest/v1/pagos_comisiones", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
+    body: JSON.stringify({ vendedor: vendedor, monto: comision }),
+  });
+  setPagando(false);
+  setPagado(true);
+  setTimeout(() => setPagado(false), 3000);
+    }
+
+    
   const ordenesActivas = ordenes.filter(o => o.estado !== "cancelada");
   const totalVendido = ordenesActivas.reduce((s, o) => {
     const envio = o.departamento ? ENVIO_DEPTO : (o.costo_envio || 0);
