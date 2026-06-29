@@ -924,40 +924,64 @@ function Dashboard({ user }) {
   const [locales, setLocales] = useState([]);
   const [deptos, setDeptos] = useState([]);
   const [loading, setLoading] = useState(true);
-   const ultimaOrdenRef = useRef(null);
-   const ordenesRef = useRef([]);
+  const ultimaOrdenRef = useRef(null);
+  const ordenesRef = useRef([]);
 
-    useEffect(() => {
+  useEffect(() => {
     if ("Notification" in window) {
       Notification.requestPermission();
     }
   }, []);
 
-  
+  function reproducirSonido() {
+    const audio = new Audio("/notification.mp3");
+    audio.volume = 0.5;
+    audio.play().catch(e => console.log("Audio bloqueado:", e));
+  }
+
   function cargarDatos() {
     const hoy = fechaHoy();
     Promise.all([
       fetch(SUPABASE_URL + "/rest/v1/ordenes_locales?fecha_orden=eq." + hoy + "&order=creado_en.desc", { headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY } }),
       fetch(SUPABASE_URL + "/rest/v1/ordenes_departamentales?fecha_orden=eq." + hoy + "&order=creado_en.desc", { headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY } }),
     ]).then(async ([resL, resD]) => {
-      setLocales(await resL.json());
-      setDeptos(await resD.json());
+      const localesData = await resL.json();
+      const deptosData = await resD.json();
+
+      const todasNuevas = [...localesData, ...deptosData];
+      const ultima = todasNuevas.sort((a, b) => new Date(b.creado_en) - new Date(a.creado_en))[0];
+
+      // Detectar orden nueva
+      if (ultimaOrdenRef.current && ultima && ultima.id !== ultimaOrdenRef.current) {
+        reproducirSonido();
+        if (Notification.permission === "granted") {
+          new Notification("🛒 Nueva orden!", {
+            body: ultima.numero_ficha + " — " + (ultima.nombre_cliente || "Sin nombre") + " — " + ultima.total_pagar,
+            icon: "/logo.png",
+          });
+        }
+      }
+      ultimaOrdenRef.current = ultima?.id;
+
+      // Detectar órdenes editadas
+      todasNuevas.forEach(orden => {
+        const anterior = ordenesRef.current.find(o => o.id === orden.id);
+        if (anterior && JSON.stringify(anterior) !== JSON.stringify(orden)) {
+          if (Notification.permission === "granted") {
+            new Notification("✏️ Orden editada", {
+              body: orden.numero_ficha + " — " + (orden.nombre_cliente || "Sin nombre") + " fue modificada",
+              icon: "/logo.png",
+            });
+          }
+        }
+      });
+      ordenesRef.current = todasNuevas;
+
+      setLocales(localesData);
+      setDeptos(deptosData);
       setLoading(false);
     });
   }
-
-  const todasOrdenes = [...locales, ...deptos];
-  const ultima = todasOrdenes.sort((a, b) => new Date(b.creado_en) - new Date(a.creado_en))[0];
-
-if (ultimaOrdenRef.current && ultima && ultima.id !== ultimaOrdenRef.current) {
-  if (Notification.permission === "granted") {
-    new Notification("🛒 Nueva orden!", {
-      body: ultima.numero_ficha + " — " + (ultima.nombre_cliente || "Sin nombre") + " — " + ultima.total_pagar,
-      icon: "/logo.png",
-    });
-  }
-}
-ultimaOrdenRef.current = ultima?.id;
 
   useEffect(() => {
     cargarDatos();
@@ -972,6 +996,14 @@ ultimaOrdenRef.current = ultima?.id;
 
   const hora = new Date().getHours();
   const saludo = hora < 12 ? "¡Buenos días" : hora < 18 ? "¡Buenas tardes" : "¡Buenas noches";
+  const frase = hora < 9 ? "☕ ¿Un café antes de empezar?"
+    : hora < 12 ? "💪 ¡A darle con todo esta mañana!"
+    : hora === 12 ? "🍽️ Es hora de almorzar, ¿Ya almorzaste?"
+    : hora === 13 ? "😴 ¿Se te cayeron los ojos después del almuerzo?"
+    : hora < 16 ? "🚀 ¡La tarde está despegando!"
+    : hora < 18 ? "🌅 ¡Ya casi terminamos el día!"
+    : hora < 20 ? "🌙 ¡Qué tarde tan productiva!"
+    : "⭐ ¡Trabajando hasta tarde, así se logran las metas!";
 
   return (
     <div style={{ maxWidth: 1200, margin: "0 auto", padding: "2rem 1.5rem", position: "relative" }}>
@@ -987,12 +1019,15 @@ ultimaOrdenRef.current = ultima?.id;
           <h1 style={{ fontSize: "2rem", fontWeight: 700, color: "#1d1d1f", margin: "0 0 0.35rem", letterSpacing: "-0.03em" }}>
             {saludo}, {user.nombre.split(" ")[0]}! 👋
           </h1>
-          <p style={{ color: "#6e6e73", fontSize: "1re m", margin: 0 }}>
+          <p style={{ color: "#6e6e73", fontSize: "1rem", margin: "0 0 0.25rem" }}>
             ¿Cuántas ventas hicimos hoy?
+          </p>
+          <p style={{ color: "#007AFF", fontSize: "0.9rem", fontWeight: 500, margin: 0 }}>
+            {frase}
           </p>
         </div>
 
-       <GraficasComparativas />
+        <GraficasComparativas />
 
         {/* Cards principales */}
         {loading ? (
@@ -1021,7 +1056,7 @@ ultimaOrdenRef.current = ultima?.id;
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.5rem" }}>
                   <div>
                     <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.25rem" }}>
-                      <span style={{ background: "#007AFF", color: "#fff", borderRadius: "6px", padding: "0.2rem 0.5rem", fontSize: "0.75rem", fontWeight: 700 }}>Ficha #{ultimaOrden.numero_ficha}</span>
+                      <span style={{ background: "#007AFF", color: "#fff", borderRadius: "6px", padding: "0.2rem 0.5rem", fontSize: "0.75rem", fontWeight: 700 }}>Orden {ultimaOrden.numero_ficha}</span>
                       <span style={{ color: "#1d1d1f", fontWeight: 600 }}>{ultimaOrden.nombre_cliente || "Sin nombre"}</span>
                     </div>
                     <div style={{ color: "#6e6e73", fontSize: "0.82rem" }}>{ultimaOrden.articulos?.slice(0, 60)}{ultimaOrden.articulos?.length > 60 ? "…" : ""}</div>
@@ -1298,32 +1333,73 @@ function AdminEstadisticas() {
     setLoading(false);
   }
 
+  const todas = [...locales, ...deptos].filter(o => o.estado !== "cancelada");
+
+  // Ventas por día
   const ventasPorDia = {};
-  locales.forEach(o => {
+  locales.filter(o => o.estado !== "cancelada").forEach(o => {
     if (!ventasPorDia[o.fecha_orden]) ventasPorDia[o.fecha_orden] = { fecha: o.fecha_orden, locales: 0, deptos: 0 };
     ventasPorDia[o.fecha_orden].locales += parseMonto(o.total_pagar) - (o.costo_envio || 0);
   });
-  deptos.forEach(o => {
+  deptos.filter(o => o.estado !== "cancelada").forEach(o => {
     if (!ventasPorDia[o.fecha_orden]) ventasPorDia[o.fecha_orden] = { fecha: o.fecha_orden, locales: 0, deptos: 0 };
     ventasPorDia[o.fecha_orden].deptos += parseMonto(o.total_pagar) - ENVIO_DEPTO;
   });
   const chartData = Object.values(ventasPorDia).sort((a, b) => a.fecha.localeCompare(b.fecha));
 
+  // Por perfil
   const porPerfil = {};
-  [...locales, ...deptos].forEach(o => {
+  todas.forEach(o => {
     const p = o.perfil_salio_1 || o.perfil_salio || "Sin perfil";
     porPerfil[p] = (porPerfil[p] || 0) + 1;
   });
-  const pieData = Object.entries(porPerfil).map(([name, value]) => ({ name, value }));
-  const totalL = locales.reduce((s, o) => s + parseMonto(o.total_pagar) - (o.costo_envio || 0), 0);
-  const totalD = deptos.reduce((s, o) => s + parseMonto(o.total_pagar) - ENVIO_DEPTO, 0);
+  const pieData = Object.entries(porPerfil).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
+
+  // Por forma de pago
+  const porPago = {};
+  todas.forEach(o => {
+    const p = o.forma_pago || "Sin forma";
+    porPago[p] = (porPago[p] || 0) + 1;
+  });
+  const pieDataPago = Object.entries(porPago).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
+
+  // Por vendedor
+  const porVendedor = {};
+  todas.forEach(o => {
+    const v = o.quien_ingresa || "Sin asignar";
+    if (!porVendedor[v]) porVendedor[v] = { vendedor: v, total: 0, ordenes: 0 };
+    const envio = o.departamento ? ENVIO_DEPTO : (o.costo_envio || 0);
+    porVendedor[v].total += parseMonto(o.total_pagar) - envio;
+    porVendedor[v].ordenes++;
+  });
+  const vendedoresData = Object.values(porVendedor).sort((a, b) => b.total - a.total).slice(0, 6);
+
+  // Top municipios/departamentos
+  const porUbicacion = {};
+  todas.forEach(o => {
+    const ub = o.departamento || o.municipio || "Sin ubicación";
+    porUbicacion[ub] = (porUbicacion[ub] || 0) + 1;
+  });
+  const ubicacionData = Object.entries(porUbicacion).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value).slice(0, 5);
+
+  const totalL = locales.filter(o => o.estado !== "cancelada").reduce((s, o) => s + parseMonto(o.total_pagar) - (o.costo_envio || 0), 0);
+  const totalD = deptos.filter(o => o.estado !== "cancelada").reduce((s, o) => s + parseMonto(o.total_pagar) - ENVIO_DEPTO, 0);
+  const canceladas = [...locales, ...deptos].filter(o => o.estado === "cancelada").length;
 
   const btnStyle = (active) => ({
     padding: "0.4rem 0.85rem", borderRadius: "8px",
     background: active ? "#007AFF" : "#f5f5f7",
     color: active ? "#fff" : "#6e6e73",
     border: "none", cursor: "pointer", fontSize: "0.82rem", fontWeight: active ? 600 : 400,
+    fontFamily: "'Inter', sans-serif",
   });
+
+  const cardChart = (children, title) => (
+    <div style={{ background: "#fff", borderRadius: "16px", padding: "1.5rem", boxShadow: "0 2px 12px rgba(0,0,0,0.04)" }}>
+      <div style={{ fontSize: "0.78rem", fontWeight: 600, color: "#6e6e73", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "1.25rem" }}>{title}</div>
+      {loading ? <div style={{ textAlign: "center", color: "#6e6e73", padding: "2rem" }}>Cargando...</div> : children}
+    </div>
+  );
 
   return (
     <div style={{ maxWidth: 1200, margin: "0 auto", padding: "2rem 1.5rem" }}>
@@ -1334,60 +1410,117 @@ function AdminEstadisticas() {
         </div>
       </div>
 
+      {/* Cards resumen */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "1rem", marginBottom: "1.5rem" }}>
         <StatCard label="Total Locales" value={formatMoney(totalL)} />
         <StatCard label="Total Deptos" value={formatMoney(totalD)} />
         <StatCard label="Gran Total" value={formatMoney(totalL + totalD)} accent="#007AFF" />
-        <StatCard label="Órdenes" value={(locales.length + deptos.length).toString()} />
+        <StatCard label="Órdenes" value={(locales.length + deptos.length - canceladas).toString()} />
+        <StatCard label="Canceladas" value={canceladas.toString()} accent="#ff3b30" />
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "1rem" }}>
-        <div style={{ background: "#fff", borderRadius: "16px", padding: "1.5rem", boxShadow: "0 2px 12px rgba(0,0,0,0.04)" }}>
-          <div style={{ fontSize: "0.78rem", fontWeight: 600, color: "#6e6e73", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "1.25rem" }}>Ventas por día</div>
-          {loading ? <div style={{ textAlign: "center", color: "#6e6e73", padding: "2rem" }}>Cargando...</div> : (
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f5f5f7" />
-                <XAxis dataKey="fecha" tick={{ fontSize: 10, fill: "#6e6e73" }} />
-                <YAxis tick={{ fontSize: 10, fill: "#6e6e73" }} />
-                <Tooltip formatter={v => formatMoney(v)} contentStyle={{ borderRadius: "10px", border: "none", boxShadow: "0 4px 16px rgba(0,0,0,0.1)" }} />
-                <Bar dataKey="locales" name="Locales" fill="#007AFF" radius={[6, 6, 0, 0]} />
-                <Bar dataKey="deptos" name="Deptos" fill="#34C759" radius={[6, 6, 0, 0]} />
-              </BarChart>
+      {/* Fila 1: Ventas por día + Por perfil */}
+      <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
+        {cardChart(
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f5f5f7" />
+              <XAxis dataKey="fecha" tick={{ fontSize: 10, fill: "#6e6e73" }} />
+              <YAxis tick={{ fontSize: 10, fill: "#6e6e73" }} />
+              <Tooltip formatter={v => formatMoney(v)} contentStyle={{ borderRadius: "10px", border: "none", boxShadow: "0 4px 16px rgba(0,0,0,0.1)" }} />
+              <Bar dataKey="locales" name="Locales" fill="#007AFF" radius={[6, 6, 0, 0]} />
+              <Bar dataKey="deptos" name="Deptos" fill="#34C759" radius={[6, 6, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>,
+          "Ventas por día"
+        )}
+
+        {cardChart(
+          <>
+            <ResponsiveContainer width="100%" height={160}>
+              <PieChart>
+                <Pie data={pieData} cx="50%" cy="50%" outerRadius={70} innerRadius={40} dataKey="value">
+                  {pieData.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
+                </Pie>
+                <Tooltip contentStyle={{ borderRadius: "10px", border: "none", boxShadow: "0 4px 16px rgba(0,0,0,0.1)" }} />
+              </PieChart>
             </ResponsiveContainer>
-          )}
-        </div>
-
-        <div style={{ background: "#fff", borderRadius: "16px", padding: "1.5rem", boxShadow: "0 2px 12px rgba(0,0,0,0.04)" }}>
-          <div style={{ fontSize: "0.78rem", fontWeight: 600, color: "#6e6e73", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "1.25rem" }}>Por perfil</div>
-          {loading ? <div style={{ textAlign: "center", color: "#6e6e73", padding: "2rem" }}>Cargando...</div> : (
-            <>
-              <ResponsiveContainer width="100%" height={160}>
-                <PieChart>
-                  <Pie data={pieData} cx="50%" cy="50%" outerRadius={70} innerRadius={40} dataKey="value">
-                    {pieData.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
-                  </Pie>
-                  <Tooltip contentStyle={{ borderRadius: "10px", border: "none", boxShadow: "0 4px 16px rgba(0,0,0,0.1)" }} />
-                </PieChart>
-              </ResponsiveContainer>
-              <div style={{ marginTop: "0.75rem" }}>
-                {pieData.map((entry, i) => (
-                  <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.35rem", fontSize: "0.8rem" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
-                      <div style={{ width: 8, height: 8, borderRadius: "50%", background: CHART_COLORS[i % CHART_COLORS.length] }} />
-                      <span style={{ color: "#1d1d1f" }}>{entry.name}</span>
-                    </div>
-                    <span style={{ color: "#6e6e73", fontWeight: 600 }}>{entry.value}</span>
+            <div style={{ marginTop: "0.75rem" }}>
+              {pieData.map((entry, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.35rem", fontSize: "0.78rem" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                    <div style={{ width: 8, height: 8, borderRadius: "50%", background: CHART_COLORS[i % CHART_COLORS.length] }} />
+                    <span style={{ color: "#1d1d1f" }}>{entry.name}</span>
                   </div>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
+                  <span style={{ color: "#6e6e73", fontWeight: 600 }}>{entry.value}</span>
+                </div>
+              ))}
+            </div>
+          </>,
+          "Por perfil"
+        )}
       </div>
+
+      {/* Fila 2: Por vendedor + Forma de pago */}
+      <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
+        {cardChart(
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={vendedoresData} layout="vertical">
+              <CartesianGrid strokeDasharray="3 3" stroke="#f5f5f7" />
+              <XAxis type="number" tick={{ fontSize: 10, fill: "#6e6e73" }} tickFormatter={v => "$" + v.toFixed(0)} />
+              <YAxis type="category" dataKey="vendedor" tick={{ fontSize: 10, fill: "#6e6e73" }} width={120} />
+              <Tooltip formatter={v => formatMoney(v)} contentStyle={{ borderRadius: "10px", border: "none", boxShadow: "0 4px 16px rgba(0,0,0,0.1)" }} />
+              <Bar dataKey="total" name="Ventas" fill="#5856D6" radius={[0, 6, 6, 0]} />
+            </BarChart>
+          </ResponsiveContainer>,
+          "Ventas por vendedor"
+        )}
+
+        {cardChart(
+          <>
+            <ResponsiveContainer width="100%" height={160}>
+              <PieChart>
+                <Pie data={pieDataPago} cx="50%" cy="50%" outerRadius={70} innerRadius={40} dataKey="value">
+                  {pieDataPago.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
+                </Pie>
+                <Tooltip contentStyle={{ borderRadius: "10px", border: "none", boxShadow: "0 4px 16px rgba(0,0,0,0.1)" }} />
+              </PieChart>
+            </ResponsiveContainer>
+            <div style={{ marginTop: "0.75rem" }}>
+              {pieDataPago.map((entry, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.35rem", fontSize: "0.78rem" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                    <div style={{ width: 8, height: 8, borderRadius: "50%", background: CHART_COLORS[i % CHART_COLORS.length] }} />
+                    <span style={{ color: "#1d1d1f" }}>{entry.name}</span>
+                  </div>
+                  <span style={{ color: "#6e6e73", fontWeight: 600 }}>{entry.value}</span>
+                </div>
+              ))}
+            </div>
+          </>,
+          "Forma de pago"
+        )}
+      </div>
+
+      {/* Fila 3: Top ubicaciones */}
+      {cardChart(
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+          {ubicacionData.map((u, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+              <div style={{ fontSize: "0.82rem", fontWeight: 600, color: "#1d1d1f", width: 160, flexShrink: 0 }}>{u.name}</div>
+              <div style={{ flex: 1, background: "#f5f5f7", borderRadius: "6px", overflow: "hidden", height: 8 }}>
+                <div style={{ width: (u.value / ubicacionData[0].value * 100) + "%", height: "100%", background: "#007AFF", borderRadius: "6px" }} />
+              </div>
+              <div style={{ fontSize: "0.78rem", color: "#6e6e73", fontWeight: 600, width: 30, textAlign: "right" }}>{u.value}</div>
+            </div>
+          ))}
+        </div>,
+        "Top municipios / departamentos"
+      )}
     </div>
   );
 }
+
 
 // == PerfilVendedor =========================================
 function PerfilVendedor({ vendedor, onClose }) {
