@@ -6,7 +6,8 @@ import { useState, useEffect, useRef } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from "recharts";
 // eslint-disable-next-line no-unused-vars
 import { Home, ClipboardList, BarChart2, Users, UserCheck, Search, Menu, MessageCircle, Eye, EyeOff } from "lucide-react";
-import { Copy, XCircle, RefreshCw, Check, Pencil, UserX } from "lucide-react";
+import { Copy, XCircle, RefreshCw, Check, Pencil, UserX, Download } from "lucide-react";
+import * as XLSX from 'xlsx'
 
 const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL;
 const SUPABASE_KEY = process.env.REACT_APP_SUPABASE_KEY;
@@ -663,7 +664,10 @@ function TablaOrdenes({ ordenes, tipo, onUpdateEnvio, esAdmin, onSave }) {
   type="text"
   inputMode="decimal"
   defaultValue={envios[o.id] || 0}
-  onFocus={e => e.target.style.border = "1.5px solid #007AFF"}
+  onClick={e => e.stopPropagation()}
+  onFocus={e => { 
+    e.stopPropagation();
+    e.target.style.border = "1.5px solid #007AFF";}}
   onBlur={e => {
     e.target.style.border = "1.5px solid #e5e5ea";
     handleEnvioChange(o.id, e.target.value);
@@ -929,7 +933,11 @@ function Dashboard({ user }) {
     }
   }, []);
 
-   
+   function reproducirSonido() {
+  const audio = new Audio("/notificacion.mpeg");
+  audio.volume = 0.5; // volumen al 50%
+  audio.play().catch(e => console.log("Audio bloqueado:", e));
+}
 
   function cargarDatos() {
     const hoy = fechaHoy();
@@ -947,6 +955,7 @@ function Dashboard({ user }) {
   const ultima = todasOrdenes.sort((a, b) => new Date(b.creado_en) - new Date(a.creado_en))[0];
 
 if (ultimaOrdenRef.current && ultima && ultima.id !== ultimaOrdenRef.current) {
+  reproducirSonido();
   if (Notification.permission === "granted") {
     new Notification("🛒 Nueva orden!", {
       body: ultima.numero_ficha + " — " + (ultima.nombre_cliente || "Sin nombre") + " — " + ultima.total_pagar,
@@ -1132,6 +1141,30 @@ function AdminOrdenes() {
     });
   }
 
+  function exportarExcel() {
+  const datos = todosF.map(o => ({
+    "Ficha": o.numero_ficha,
+    "Fecha": o.fecha_orden,
+    "Cliente": o.nombre_cliente,
+    "Artículos": o.articulos,
+    "Municipio/Depto": o.municipio || o.departamento,
+    "Dirección": o.direccion_entrega,
+    "Total": o.total_pagar,
+    "Envío": o.costo_envio || ENVIO_DEPTO,
+    "Neto": parseMonto(o.total_pagar) - (o.departamento ? ENVIO_DEPTO : (o.costo_envio || 0)),
+    "Forma de pago": o.forma_pago,
+    "Perfil": o.perfil_salio_1 || o.perfil_salio,
+    "Vendedor": o.quien_ingresa,
+    "Estado": o.estado,
+  }));
+
+  const ws = XLSX.utils.json_to_sheet(datos);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Órdenes");
+  XLSX.writeFile(wb, "ordenes-" + filtroFecha + ".xlsx");
+}
+
+
   function filtrar(lista) {
     return lista.filter(o => {
       if (filtroVendedor && o.quien_ingresa !== filtroVendedor) return false;
@@ -1190,7 +1223,16 @@ function AdminOrdenes() {
           fontFamily: "'Inter', sans-serif", fontWeight: rangoFecha === "todo" ? 600 : 400,
         }}>
           {rangoFecha === "todo" ? "Hasta hoy" : "Solo hoy"}
-        </button>
+        </button> 
+       <button onClick={exportarExcel} style={{
+  padding: "0.5rem 0.85rem", background: "#34C759", color: "#fff",
+  border: "none", borderRadius: "10px", fontWeight: 600,
+  fontSize: "0.85rem", cursor: "pointer", fontFamily: "'Inter', sans-serif",
+  display: "flex", alignItems: "center", gap: "0.35rem",
+}}>
+  <Download size={15} /> Exportar Excel
+</button>
+
         <select value={filtroVendedor} onChange={e => setFiltroVendedor(e.target.value)} style={selectStyle}>
           <option value="">Todos los vendedores</option>
           {vendedores.map(v => <option key={v} value={v}>{v}</option>)}
@@ -1200,10 +1242,14 @@ function AdminOrdenes() {
           {perfiles.map(p => <option key={p} value={p}>{p}</option>)}
         </select>
         <input
-          placeholder="🔍 Buscar ficha, cliente o artículo..."
+          placeholder="Buscar ficha, cliente o artículo..."
           value={busqueda}
           onChange={e => setBusqueda(e.target.value)}
           style={{ ...selectStyle, minWidth: 220 }}
+
+        
+
+
         />
       </div>
 
