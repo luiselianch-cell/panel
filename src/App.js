@@ -1713,6 +1713,8 @@ function AdminVendedores() {
 
 
 // ══ VendedorPanel ═════════════════════════════════════════
+console.log("Usuario:", user);
+
 function VendedorPanel({ user }) {
   const [locales, setLocales] = useState([]);
   const [deptos, setDeptos] = useState([]);
