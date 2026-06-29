@@ -933,12 +933,7 @@ function Dashboard({ user }) {
     }
   }, []);
 
-   function reproducirSonido() {
-  const audio = new Audio("/notificacion.mpeg");
-  audio.volume = 0.5; // volumen al 50%
-  audio.play().catch(e => console.log("Audio bloqueado:", e));
-}
-
+  
   function cargarDatos() {
     const hoy = fechaHoy();
     Promise.all([
@@ -955,7 +950,6 @@ function Dashboard({ user }) {
   const ultima = todasOrdenes.sort((a, b) => new Date(b.creado_en) - new Date(a.creado_en))[0];
 
 if (ultimaOrdenRef.current && ultima && ultima.id !== ultimaOrdenRef.current) {
-  reproducirSonido();
   if (Notification.permission === "granted") {
     new Notification("🛒 Nueva orden!", {
       body: ultima.numero_ficha + " — " + (ultima.nombre_cliente || "Sin nombre") + " — " + ultima.total_pagar,
