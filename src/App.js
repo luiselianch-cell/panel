@@ -1414,58 +1414,56 @@ function PerfilVendedor({ vendedor, onClose }) {
     } else {
       desde = new Date(hoy.getFullYear(), 0, 1);
     }
-    
-    
-
 
     const desdeStr = desde.toISOString().split("T")[0];
+    const inicioMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString().split("T")[0];
     const nombre = encodeURIComponent(vendedor);
 
-    const [resL, resD, resLTodo, resDTodo] = await Promise.all([
+    const [resL, resD, resLTodo, resDTodo, resPago] = await Promise.all([
       fetch(SUPABASE_URL + "/rest/v1/ordenes_locales?fecha_orden=gte." + desdeStr + "&quien_ingresa=eq." + nombre + "&order=creado_en.desc", { headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY } }),
       fetch(SUPABASE_URL + "/rest/v1/ordenes_departamentales?fecha_orden=gte." + desdeStr + "&quien_ingresa=eq." + nombre + "&order=creado_en.desc", { headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY } }),
       fetch(SUPABASE_URL + "/rest/v1/ordenes_locales?quien_ingresa=eq." + nombre, { headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY } }),
       fetch(SUPABASE_URL + "/rest/v1/ordenes_departamentales?quien_ingresa=eq." + nombre, { headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY } }),
+      fetch(SUPABASE_URL + "/rest/v1/pagos_comisiones?vendedor=eq." + nombre + "&fecha_pago=gte." + inicioMes, { headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY } }),
     ]);
 
     const l = await resL.json();
     const d = await resD.json();
     const lTodo = await resLTodo.json();
     const dTodo = await resDTodo.json();
+    const pagos = await resPago.json();
 
     setOrdenes([...l, ...d].sort((a, b) => new Date(b.creado_en) - new Date(a.creado_en)));
     setTodos([...lTodo, ...dTodo]);
+    if (pagos.length > 0) setComisionPagada(true);
     setLoading(false);
   }
 
-async function registrarPago() {
-  if (!window.confirm("¿Confirmar pago de comisión de " + formatMoney(comision) + "?")) return;
-  setPagando(true);
-  await fetch(SUPABASE_URL + "/rest/v1/pagos_comisiones", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
-    body: JSON.stringify({ vendedor: vendedor, monto: comision }),
-  });
-  setPagando(false);
-  setPagado(true);
-  setComisionPagada(true);
-  setShowConfirm(false);
-  setTimeout(() => setPagado(false), 3000);
-   }
+  async function registrarPago() {
+    setPagando(true);
+    await fetch(SUPABASE_URL + "/rest/v1/pagos_comisiones", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
+      body: JSON.stringify({ vendedor: vendedor, monto: comision }),
+    });
+    setPagando(false);
+    setPagado(true);
+    setComisionPagada(true);
+    setShowConfirm(false);
+    setTimeout(() => setPagado(false), 3000);
+  }
 
-    
   const ordenesActivas = ordenes.filter(o => o.estado !== "cancelada");
   const totalVendido = ordenesActivas.reduce((s, o) => {
     const envio = o.departamento ? ENVIO_DEPTO : (o.costo_envio || 0);
     return s + parseMonto(o.total_pagar) - envio;
   }, 0);
-  const comision = totalVendido * COMISION;
+  const comision = comisionPagada ? 0 : totalVendido * COMISION;
   const totalHistorico = todos.filter(o => o.estado !== "cancelada").reduce((s, o) => {
     const envio = o.departamento ? ENVIO_DEPTO : (o.costo_envio || 0);
     return s + parseMonto(o.total_pagar) - envio;
   }, 0);
 
-  // Ventas por día para gráfica
   const ventasPorDia = {};
   ordenesActivas.forEach(o => {
     if (!ventasPorDia[o.fecha_orden]) ventasPorDia[o.fecha_orden] = 0;
@@ -1505,7 +1503,7 @@ async function registrarPago() {
         overflow: "hidden",
       }} onClick={e => e.stopPropagation()}>
 
-        {/* Header */}
+        {/* Header oscuro */}
         <div style={{ background: "#1c1c1e", padding: "1.5rem", position: "relative" }}>
           <button onClick={onClose} style={{ position: "absolute", top: "1rem", right: "1rem", background: "rgba(255,255,255,0.1)", border: "none", borderRadius: "50%", width: 32, height: 32, cursor: "pointer", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
           <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "1.25rem" }}>
@@ -1518,7 +1516,7 @@ async function registrarPago() {
             </div>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.75rem" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.75rem", marginBottom: "1rem" }}>
             {[
               { label: "Vendido", value: formatMoney(totalVendido) },
               { label: "Comisión", value: formatMoney(comision), green: true },
@@ -1528,67 +1526,30 @@ async function registrarPago() {
                 <div style={{ fontSize: "0.68rem", color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.25rem" }}>{card.label}</div>
                 <div style={{ fontSize: "1.1rem", fontWeight: 700, color: card.green ? "#34C759" : "#fff" }}>{card.value}</div>
               </div>
-
-
-
             ))}
           </div>
-<button onClick={registrarPago} disabled={pagando || comision === 0} style={{
-  marginTop: "1rem",
-  width: "100%",
-  padding: "0.75rem",
-  background: pagado ? "rgba(52,199,89,0.2)" : comision === 0 ? "rgba(255,255,255,0.05)" : "#34C759",
-  color: pagado ? "#34C759" : comision === 0 ? "rgba(255,255,255,0.3)" : "#fff",
-  border: "none", borderRadius: "12px",
-  fontWeight: 600, fontSize: "0.9rem",
-  cursor: comision === 0 ? "default" : "pointer",
-  fontFamily: "'Inter', sans-serif",
-  transition: "all 0.2s",
-  display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem",
-}}>
-   {comisionPagada 
-    ? <span style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}><CheckCircle size={16} /> Comisión pagada</span>
-    : <span style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}><Banknote size={16} /> Marcar comisión como pagada — {formatMoney(comision)}</span>
-  }
-</button>
 
-{showConfirm && (
-  <div style={{
-    position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
-    background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)",
-    zIndex: 1100, display: "flex", alignItems: "center", justifyContent: "center",
-    padding: "1.5rem",
-  }}>
-    <div style={{
-      background: "#fff", borderRadius: "20px", padding: "2rem",
-      maxWidth: 360, width: "100%", textAlign: "center",
-      boxShadow: "0 20px 60px rgba(0,0,0,0.2)",
-    }}>
-      <div style={{ fontSize: "2rem", marginBottom: "0.75rem" }}>💰</div>
-      <h3 style={{ fontSize: "1.1rem", fontWeight: 700, color: "#1d1d1f", margin: "0 0 0.5rem" }}>Confirmar pago</h3>
-      <p style={{ color: "#6e6e73", fontSize: "0.88rem", margin: "0 0 1.5rem" }}>
-        ¿Confirmas el pago de <strong style={{ color: "#34C759" }}>{formatMoney(comision)}</strong> a {vendedor.replace("(Vend)", "").trim()}?
-      </p>
-      <div style={{ display: "flex", gap: "0.75rem" }}>
-        <button onClick={() => setShowConfirm(false)} style={{
-          flex: 1, padding: "0.75rem", background: "#f5f5f7",
-          border: "none", borderRadius: "10px", fontWeight: 600,
-          cursor: "pointer", fontFamily: "'Inter', sans-serif", color: "#6e6e73",
-        }}>Cancelar</button>
-        <button onClick={registrarPago} disabled={pagando} style={{
-          flex: 2, padding: "0.75rem", background: "#34C759",
-          border: "none", borderRadius: "10px", fontWeight: 600,
-          cursor: "pointer", fontFamily: "'Inter', sans-serif", color: "#fff",
-          display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem",
-        }}>
-          {pagando ? "Procesando..." : <><CheckCircle size={16} /> Confirmar pago</>}
-        </button>
-      </div>
-    </div>
-  </div>
-)}
-
-</div>
+          {/* Botón pago */}
+          <button
+            onClick={() => setShowConfirm(true)}
+            disabled={comisionPagada || comision === 0}
+            style={{
+              width: "100%", padding: "0.75rem",
+              background: comisionPagada ? "rgba(52,199,89,0.15)" : comision === 0 ? "rgba(255,255,255,0.05)" : "#34C759",
+              color: comisionPagada ? "#34C759" : comision === 0 ? "rgba(255,255,255,0.3)" : "#fff",
+              border: "none", borderRadius: "12px",
+              fontWeight: 600, fontSize: "0.9rem",
+              cursor: comisionPagada || comision === 0 ? "default" : "pointer",
+              fontFamily: "'Inter', sans-serif",
+              transition: "all 0.2s",
+              display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem",
+            }}>
+            {comisionPagada
+              ? <span style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}><CheckCircle size={16} /> Comisión pagada este mes</span>
+              : <span style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}><Banknote size={16} /> Marcar comisión como pagada — {formatMoney(comision)}</span>
+            }
+          </button>
+        </div>
 
         {/* Controles */}
         <div style={{ background: "#fff", padding: "0.75rem 1.25rem", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #f5f5f7" }}>
@@ -1654,6 +1615,43 @@ async function registrarPago() {
           )}
         </div>
       </div>
+
+      {/* Modal confirmación pago */}
+      {showConfirm && (
+        <div style={{
+          position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+          background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)",
+          zIndex: 1100, display: "flex", alignItems: "center", justifyContent: "center",
+          padding: "1.5rem",
+        }}>
+          <div style={{
+            background: "#fff", borderRadius: "20px", padding: "2rem",
+            maxWidth: 360, width: "100%", textAlign: "center",
+            boxShadow: "0 20px 60px rgba(0,0,0,0.2)",
+          }}>
+            <div style={{ fontSize: "2rem", marginBottom: "0.75rem" }}>💰</div>
+            <h3 style={{ fontSize: "1.1rem", fontWeight: 700, color: "#1d1d1f", margin: "0 0 0.5rem" }}>Confirmar pago</h3>
+            <p style={{ color: "#6e6e73", fontSize: "0.88rem", margin: "0 0 1.5rem" }}>
+              ¿Confirmas el pago de <strong style={{ color: "#34C759" }}>{formatMoney(comision)}</strong> a {vendedor.replace("(Vend)", "").trim()}?
+            </p>
+            <div style={{ display: "flex", gap: "0.75rem" }}>
+              <button onClick={() => setShowConfirm(false)} style={{
+                flex: 1, padding: "0.75rem", background: "#f5f5f7",
+                border: "none", borderRadius: "10px", fontWeight: 600,
+                cursor: "pointer", fontFamily: "'Inter', sans-serif", color: "#6e6e73",
+              }}>Cancelar</button>
+              <button onClick={registrarPago} disabled={pagando} style={{
+                flex: 2, padding: "0.75rem", background: "#34C759",
+                border: "none", borderRadius: "10px", fontWeight: 600,
+                cursor: "pointer", fontFamily: "'Inter', sans-serif", color: "#fff",
+                display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem",
+              }}>
+                {pagando ? "Procesando..." : <span style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}><CheckCircle size={16} /> Confirmar pago</span>}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
