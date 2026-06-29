@@ -1594,6 +1594,7 @@ function AdminVendedores() {
     "Kevin (Vend)",
     "Marisol (Vend)",
     "Herbert (Vend)",
+    "Pedido de Pagina Web"
   ];
 
   useEffect(() => { cargarTodo(); }, [filtroFecha]);
@@ -1713,7 +1714,6 @@ function AdminVendedores() {
 
 
 // ══ VendedorPanel ═════════════════════════════════════════
-console.log("Usuario:", user);
 
 function VendedorPanel({ user }) {
   const [locales, setLocales] = useState([]);
