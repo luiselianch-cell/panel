@@ -1782,7 +1782,7 @@ function VendedorPanel({ user }) {
   const hora = new Date().getHours();
   const saludo = hora < 12 ? "Buenos días" : hora < 18 ? "Buenas tardes" : "Buenas noches";
   const nombreCorto = (user.nombre || "").split(" ")[0].replace("(Vend)", "").trim();
-
+  
   return (
     <div style={{ minHeight: "100vh", background: "#f5f5f7", fontFamily: "'Inter', sans-serif" }}>
 
@@ -2223,8 +2223,8 @@ export default function App() {
       if (activeTab === "vendedores") return <AdminVendedores />;
       if (activeTab === "equipo") return <AdminEquipo />;
     } else {
-  return <div style={{ padding: "2rem" }}>Hola {user.nombre}</div>;
-}
+      return <VendedorPanel user={user} />;
+    }
   }
 
   return (
