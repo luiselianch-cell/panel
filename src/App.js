@@ -1781,8 +1781,8 @@ function VendedorPanel({ user }) {
 
   const hora = new Date().getHours();
   const saludo = hora < 12 ? "Buenos días" : hora < 18 ? "Buenas tardes" : "Buenas noches";
-  const nombreCorto = user.nombre.split(" ")[0].replace("(Vend)", "").trim();
-
+  const nombreCorto = (user.nombre || "").split(" ")[0].replace("(Vend)", "").trim();
+  
   return (
     <div style={{ minHeight: "100vh", background: "#f5f5f7", fontFamily: "'Inter', sans-serif" }}>
 
