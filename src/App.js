@@ -1398,6 +1398,8 @@ function PerfilVendedor({ vendedor, onClose }) {
   const [tab, setTab] = useState("ordenes");
   const [pagando, setPagando] = useState(false);
   const [pagado, setPagado] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [comisionPagada, setComisionPagada] = useState(false);
 
   useEffect(() => { cargarDatos(); }, [rango]);
 
@@ -1444,10 +1446,12 @@ async function registrarPago() {
     headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
     body: JSON.stringify({ vendedor: vendedor, monto: comision }),
   });
-  setPagando(false);
+  ssetPagando(false);
   setPagado(true);
+  setComisionPagada(true);
+  setShowConfirm(false);
   setTimeout(() => setPagado(false), 3000);
-    }
+   }
 
     
   const ordenesActivas = ordenes.filter(o => o.estado !== "cancelada");
@@ -1542,13 +1546,48 @@ async function registrarPago() {
   transition: "all 0.2s",
   display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem",
 }}>
-  {pagado 
-  ? <span style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}><CheckCircle size={16} /> Comisión registrada</span>
-  : pagando 
-  ? "Procesando..."
-  : <span style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}><Banknote size={16} /> Marcar comisión como pagada — {formatMoney(comision)}</span>
-}
+   {comisionPagada 
+    ? <span style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}><CheckCircle size={16} /> Comisión pagada</span>
+    : <span style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}><Banknote size={16} /> Marcar comisión como pagada — {formatMoney(comision)}</span>
+  }
 </button>
+
+{showConfirm && (
+  <div style={{
+    position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+    background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)",
+    zIndex: 1100, display: "flex", alignItems: "center", justifyContent: "center",
+    padding: "1.5rem",
+  }}>
+    <div style={{
+      background: "#fff", borderRadius: "20px", padding: "2rem",
+      maxWidth: 360, width: "100%", textAlign: "center",
+      boxShadow: "0 20px 60px rgba(0,0,0,0.2)",
+    }}>
+      <div style={{ fontSize: "2rem", marginBottom: "0.75rem" }}>💰</div>
+      <h3 style={{ fontSize: "1.1rem", fontWeight: 700, color: "#1d1d1f", margin: "0 0 0.5rem" }}>Confirmar pago</h3>
+      <p style={{ color: "#6e6e73", fontSize: "0.88rem", margin: "0 0 1.5rem" }}>
+        ¿Confirmas el pago de <strong style={{ color: "#34C759" }}>{formatMoney(comision)}</strong> a {vendedor.replace("(Vend)", "").trim()}?
+      </p>
+      <div style={{ display: "flex", gap: "0.75rem" }}>
+        <button onClick={() => setShowConfirm(false)} style={{
+          flex: 1, padding: "0.75rem", background: "#f5f5f7",
+          border: "none", borderRadius: "10px", fontWeight: 600,
+          cursor: "pointer", fontFamily: "'Inter', sans-serif", color: "#6e6e73",
+        }}>Cancelar</button>
+        <button onClick={registrarPago} disabled={pagando} style={{
+          flex: 2, padding: "0.75rem", background: "#34C759",
+          border: "none", borderRadius: "10px", fontWeight: 600,
+          cursor: "pointer", fontFamily: "'Inter', sans-serif", color: "#fff",
+          display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem",
+        }}>
+          {pagando ? "Procesando..." : <><CheckCircle size={16} /> Confirmar pago</>}
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
 </div>
 
         {/* Controles */}
