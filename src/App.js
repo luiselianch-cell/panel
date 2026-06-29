@@ -130,30 +130,27 @@ function Login({ onLogin }) {
 }
 
 // ══ Navbar ════════════════════════════════════════════════
-function Navbar({ user, onLogout, activeTab, setActiveTab, busqueda, setBusqueda, darkMode }) {
+function Navbar({ user, onLogout, activeTab, setActiveTab, darkMode }) {
   const [showMenu, setShowMenu] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const [showSearch, setShowSearch] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0 });
   const tabsRef = useRef({});
 
-function handleTabHover(id, e) {
-  const el = tabsRef.current[id];
-  if (el) setIndicatorStyle({ left: el.offsetLeft, width: el.offsetWidth });
-}
+  function handleTabHover(id) {
+    const el = tabsRef.current[id];
+    if (el) setIndicatorStyle({ left: el.offsetLeft, width: el.offsetWidth });
+  }
 
-function handleNavLeave() {
-  const el = tabsRef.current[activeTab];
-  if (el) setIndicatorStyle({ left: el.offsetLeft, width: el.offsetWidth });
-}
+  function handleNavLeave() {
+    const el = tabsRef.current[activeTab];
+    if (el) setIndicatorStyle({ left: el.offsetLeft, width: el.offsetWidth });
+  }
 
-useEffect(() => {
-  const el = tabsRef.current[activeTab];
-  if (el) setIndicatorStyle({ left: el.offsetLeft, width: el.offsetWidth });
-}, [activeTab]);
-
-
+  useEffect(() => {
+    const el = tabsRef.current[activeTab];
+    if (el) setIndicatorStyle({ left: el.offsetLeft, width: el.offsetWidth });
+  }, [activeTab]);
 
   useEffect(() => {
     function handleResize() { setIsMobile(window.innerWidth < 768); }
@@ -172,18 +169,17 @@ useEffect(() => {
 
   const textColor = darkMode ? "rgba(255,255,255,0.7)" : "#6e6e73";
   const textActive = darkMode ? "#34C759" : "#007AFF";
-  const borderColor = darkMode ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.06)";
+  const borderColor = darkMode ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)";
   const menuBg = darkMode ? "#1c1c1e" : "#fff";
   const menuText = darkMode ? "#fff" : "#1d1d1f";
-  const inputBg = darkMode ? "rgba(255,255,255,0.1)" : "#f5f5f7";
   const inputBorder = darkMode ? "rgba(255,255,255,0.15)" : "#e5e5ea";
 
   return (
     <>
       <div style={{
-        background: darkMode ? "transparent" : "rgba(255,255,255,0.85)",
-        backdropFilter: darkMode ? "none" : "blur(20px)",
-        WebkitBackdropFilter: darkMode ? "none" : "blur(20px)",
+        background: darkMode ? "rgba(10,10,10,0.4)" : "rgba(255,255,255,0.85)",
+        backdropFilter: "blur(20px)",
+        WebkitBackdropFilter: "blur(20px)",
         borderBottom: "1px solid " + borderColor,
         position: "sticky", top: 0, zIndex: 100,
         fontFamily: "'Inter', sans-serif",
@@ -200,80 +196,47 @@ useEffect(() => {
           {/* Pestañas — solo desktop y solo admin */}
           {!isMobile && user.rol === "admin" && (
             <div style={{ display: "flex", flex: 1, position: "relative" }} onMouseLeave={handleNavLeave}>
-  {tabs.map(tab => (
-    <button
-      key={tab.id}
-      ref={el => tabsRef.current[tab.id] = el}
-      onClick={() => handleTabClick(tab.id)}
-      onMouseEnter={e => handleTabHover(tab.id, e)}
-      style={{
-        padding: "0.4rem 0.85rem",
-        background: "transparent",
-        color: activeTab === tab.id ? textActive : textColor,
-        border: "none",
-        borderBottom: "2px solid transparent",
-        borderRadius: 0,
-        fontWeight: activeTab === tab.id ? 600 : 400,
-        fontSize: "0.88rem",
-        cursor: "pointer",
-        display: "flex", alignItems: "center", gap: "0.35rem",
-        paddingBottom: "0.5rem",
-        fontFamily: "'Inter', sans-serif",
-        transition: "color 0.15s",
-      }}>
-      {tab.icon}{tab.label}
-    </button>
-  ))}
-  {/* Línea deslizante */}
-  <div style={{
-    position: "absolute",
-    bottom: 0,
-    left: indicatorStyle.left,
-    width: indicatorStyle.width,
-    height: 2,
-    background: textActive,
-    borderRadius: "2px 2px 0 0",
-    transition: "left 0.2s ease, width 0.2s ease",
-  }} />
-</div>
+              {tabs.map(tab => (
+                <button
+                  key={tab.id}
+                  ref={el => tabsRef.current[tab.id] = el}
+                  onClick={() => handleTabClick(tab.id)}
+                  onMouseEnter={() => handleTabHover(tab.id)}
+                  onMouseOver={e => { e.currentTarget.style.background = "rgba(0,122,255,0.08)"; e.currentTarget.style.backdropFilter = "blur(8px)"; }}
+                  onMouseOut={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.backdropFilter = "none"; }}
+                  style={{
+                    padding: "0.4rem 0.85rem",
+                    background: "transparent",
+                    color: activeTab === tab.id ? textActive : textColor,
+                    border: "none",
+                    borderBottom: "2px solid transparent",
+                    borderRadius: "8px 8px 0 0",
+                    fontWeight: activeTab === tab.id ? 600 : 400,
+                    fontSize: "0.88rem",
+                    cursor: "pointer",
+                    display: "flex", alignItems: "center", gap: "0.35rem",
+                    paddingBottom: "0.5rem",
+                    fontFamily: "'Inter', sans-serif",
+                    transition: "color 0.15s, background 0.15s",
+                  }}>
+                  {tab.icon}{tab.label}
+                </button>
+              ))}
+              {/* Línea deslizante */}
+              <div style={{
+                position: "absolute",
+                bottom: 0,
+                left: indicatorStyle.left,
+                width: indicatorStyle.width,
+                height: 2,
+                background: textActive,
+                borderRadius: "2px 2px 0 0",
+                transition: "left 0.2s ease, width 0.2s ease",
+              }} />
+            </div>
           )}
 
           <div style={{ flex: 1 }} />
-
-          {/* Búsqueda */}
-          <div style={{ position: "relative" }}>
-            <button onClick={() => setShowSearch(!showSearch)} style={{
-              background: "transparent", border: "none", cursor: "pointer",
-              padding: "0.4rem", borderRadius: "8px", display: "flex", alignItems: "center",
-              color: textColor,
-            }}>
-              <Search size={18} />
-            </button>
-            {showSearch && (
-              <div style={{
-                position: "absolute", top: "calc(100% + 8px)", right: 0,
-                background: menuBg, borderRadius: "12px",
-                boxShadow: "0 8px 30px rgba(0,0,0,0.15)",
-                padding: "0.5rem", zIndex: 200, width: 260,
-              }}>
-                <input
-                  autoFocus
-                  placeholder="Buscar ficha o cliente..."
-                  value={busqueda}
-                  onChange={e => setBusqueda(e.target.value)}
-                  style={{
-                    width: "100%", padding: "0.5rem 0.75rem",
-                    border: "1px solid " + inputBorder,
-                    borderRadius: "8px", fontSize: "0.85rem",
-                    outline: "none", background: inputBg,
-                    color: menuText,
-                    fontFamily: "'Inter', sans-serif",
-                    boxSizing: "border-box",
-                  }}
-                />
-              </div>
-            )}
-          </div>
 
           {/* Usuario */}
           <div style={{ position: "relative" }}>
