@@ -1660,6 +1660,18 @@ function PerfilVendedor({ vendedor, onClose }) {
   const [pagado, setPagado] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [comisionPagada, setComisionPagada] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = "auto"; };
+  }, []);
+
+  useEffect(() => {
+    function handleResize() { setIsMobile(window.innerWidth < 768); }
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   useEffect(() => { cargarDatos(); }, [rango]);
 
@@ -1754,130 +1766,149 @@ function PerfilVendedor({ vendedor, onClose }) {
       background: "rgba(0,0,0,0.4)", backdropFilter: "blur(4px)",
       zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center",
       padding: "1.5rem", fontFamily: "'Inter', sans-serif",
+      boxSizing: "border-box",
     }} onClick={onClose}>
       <div style={{
         background: "#f5f5f7", borderRadius: "20px",
-        width: "100%", maxWidth: 680,
-        maxHeight: "90vh", display: "flex", flexDirection: "column",
+        width: "100%", maxWidth: 920,
+        maxHeight: "calc(100vh - 3rem)",
+        display: "flex", flexDirection: isMobile ? "column" : "row",
         boxShadow: "0 20px 60px rgba(0,0,0,0.2)",
         overflow: "hidden",
+        boxSizing: "border-box",
       }} onClick={e => e.stopPropagation()}>
 
-        {/* Header oscuro */}
-        <div style={{ background: "#1c1c1e", padding: "1.5rem", position: "relative", overflow: "hidden" }}>
-          {/* Destellos difuminados azules */}
+        {/* ══ Columna izquierda: Perfil ══ */}
+        <div style={{
+          background: "#1c1c1e", padding: "1.5rem",
+          position: "relative", overflow: "hidden",
+          width: isMobile ? "100%" : 280, flexShrink: 0,
+          display: "flex", flexDirection: "column",
+        }}>
+          {/* Destellos difuminados */}
           <div style={{ position: "absolute", width: 220, height: 220, borderRadius: "50%", background: "radial-gradient(circle, rgba(0,122,255,0.25) 0%, transparent 70%)", top: -100, right: -60, pointerEvents: "none" }} />
           <div style={{ position: "absolute", width: 160, height: 160, borderRadius: "50%", background: "radial-gradient(circle, rgba(52,199,89,0.15) 0%, transparent 70%)", bottom: -80, left: -40, pointerEvents: "none" }} />
 
-          <button onClick={onClose} style={{ position: "absolute", top: "1rem", right: "1rem", background: "rgba(255,255,255,0.1)", border: "none", borderRadius: "50%", width: 32, height: 32, cursor: "pointer", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1 }}>✕</button>
-          <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "1.25rem", position: "relative", zIndex: 1 }}>
-            <div style={{ width: 52, height: 52, borderRadius: "50%", background: "#007AFF", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: "1.2rem", fontWeight: 700 }}>
-              {vendedor.charAt(0)}
-            </div>
-            <div>
-              <h2 style={{ color: "#fff", fontSize: "1.2rem", fontWeight: 700, margin: 0 }}>{vendedor}</h2>
-              <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "0.82rem", margin: "0.2rem 0 0" }}>Vendedor · {todos.length} órdenes históricas</p>
-            </div>
-          </div>
+          <button onClick={onClose} style={{ position: "absolute", top: "1rem", right: "1rem", background: "rgba(255,255,255,0.1)", border: "none", borderRadius: "50%", width: 32, height: 32, cursor: "pointer", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2 }}>✕</button>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.75rem", marginBottom: "1rem", position: "relative", zIndex: 1 }}>
-            {[
-              { label: "Vendido", value: formatMoney(totalVendido) },
-              { label: "Comisión", value: formatMoney(comision), green: true },
-              { label: "Histórico", value: formatMoney(totalHistorico) },
-            ].map((card, i) => (
-              <div key={i} style={{ background: "rgba(255,255,255,0.08)", borderRadius: "12px", padding: "0.85rem 1rem" }}>
-                <div style={{ fontSize: "0.68rem", color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.25rem" }}>{card.label}</div>
-                <div style={{ fontSize: "1.1rem", fontWeight: 700, color: card.green ? "#34C759" : "#fff" }}>{card.value}</div>
+          <div style={{ position: "relative", zIndex: 1, flex: 1, display: "flex", flexDirection: "column" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.85rem", marginBottom: "1.5rem" }}>
+              <div style={{ width: 48, height: 48, borderRadius: "50%", background: "#007AFF", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: "1.1rem", fontWeight: 700, flexShrink: 0 }}>
+                {vendedor.charAt(0)}
               </div>
-            ))}
-          </div>
-
-          {/* Botón pago */}
-          <button
-            onClick={() => setShowConfirm(true)}
-            disabled={comisionPagada || comision === 0}
-            style={{
-              width: "100%", padding: "0.75rem",
-              background: comisionPagada ? "rgba(52,199,89,0.15)" : comision === 0 ? "rgba(255,255,255,0.05)" : "#34C759",
-              color: comisionPagada ? "#34C759" : comision === 0 ? "rgba(255,255,255,0.3)" : "#fff",
-              border: "none", borderRadius: "12px",
-              fontWeight: 600, fontSize: "0.9rem",
-              cursor: comisionPagada || comision === 0 ? "default" : "pointer",
-              fontFamily: "'Inter', sans-serif",
-              transition: "all 0.2s",
-              display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem",
-              position: "relative", zIndex: 1,
-            }}>
-            {comisionPagada
-              ? <span style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}><CheckCircle size={16} /> Comisión pagada este mes</span>
-              : <span style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}><Banknote size={16} /> Marcar comisión como pagada — {formatMoney(comision)}</span>
-            }
-          </button>
-        </div>
-
-        {/* Controles */}
-        <div style={{ background: "#fff", padding: "0.75rem 1.25rem", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #f5f5f7" }}>
-          <div style={{ display: "flex", gap: "0.25rem" }}>
-            <button onClick={() => setTab("ordenes")} style={tabStyle(tab === "ordenes")}>Órdenes</button>
-            <button onClick={() => setTab("grafica")} style={tabStyle(tab === "grafica")}>Gráfica</button>
-          </div>
-          <div style={{ display: "flex", gap: "0.35rem", background: "#f5f5f7", borderRadius: "10px", padding: "0.25rem" }}>
-            {["semana", "mes", "año"].map(r => <button key={r} onClick={() => setRango(r)} style={btnStyle(rango === r)}>{r}</button>)}
-          </div>
-        </div>
-
-        {/* Contenido */}
-        <div style={{ flex: 1, overflowY: "auto", padding: "1.25rem" }}>
-          {loading ? (
-            <div style={{ textAlign: "center", color: "#6e6e73", padding: "3rem" }}>Cargando...</div>
-          ) : tab === "grafica" ? (
-            <div style={{ background: "#fff", borderRadius: "16px", padding: "1.25rem", boxShadow: "0 2px 12px rgba(0,0,0,0.04)" }}>
-              <div style={{ fontSize: "0.78rem", fontWeight: 600, color: "#6e6e73", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "1rem" }}>Ventas por día</div>
-              {chartData.length === 0 ? (
-                <div style={{ textAlign: "center", color: "#6e6e73", padding: "2rem" }}>Sin datos</div>
-              ) : (
-                <ResponsiveContainer width="100%" height={220}>
-                  <BarChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f5f5f7" />
-                    <XAxis dataKey="fecha" tick={{ fontSize: 10, fill: "#6e6e73" }} />
-                    <YAxis tick={{ fontSize: 10, fill: "#6e6e73" }} />
-                    <Tooltip formatter={v => formatMoney(v)} contentStyle={{ borderRadius: "10px", border: "none", boxShadow: "0 4px 16px rgba(0,0,0,0.1)" }} />
-                    <Bar dataKey="total" name="Ventas" fill="#007AFF" radius={[6, 6, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              )}
+              <div>
+                <h2 style={{ color: "#fff", fontSize: "1.05rem", fontWeight: 700, margin: 0, lineHeight: 1.2 }}>{vendedor}</h2>
+                <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "0.75rem", margin: "0.2rem 0 0" }}>{todos.length} órdenes históricas</p>
+              </div>
             </div>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-              {ordenes.length === 0 ? (
-                <div style={{ background: "#fff", borderRadius: "16px", padding: "2rem", textAlign: "center", color: "#6e6e73" }}>No hay órdenes en este período</div>
-              ) : ordenes.map((o, i) => {
-                const esDep = !!o.departamento;
-                const envio = esDep ? ENVIO_DEPTO : (o.costo_envio || 0);
-                const neto = parseMonto(o.total_pagar) - envio;
-                const cancelada = o.estado === "cancelada";
-                return (
-                  <div key={o.id} style={{ background: "#fff", borderRadius: "12px", padding: "1rem 1.25rem", boxShadow: "0 2px 8px rgba(0,0,0,0.04)", opacity: cancelada ? 0.5 : 1, borderLeft: cancelada ? "3px solid #ff3b30" : "3px solid transparent" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                      <div>
-                        <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", marginBottom: "0.25rem" }}>
-                          <span style={{ background: esDep ? "rgba(88,86,214,0.1)" : "rgba(0,122,255,0.1)", color: esDep ? "#5856D6" : "#007AFF", borderRadius: "6px", padding: "0.15rem 0.4rem", fontSize: "0.68rem", fontWeight: 700 }}>{o.numero_ficha}</span>
-                          {cancelada && <span style={{ background: "#fff2f2", color: "#ff3b30", borderRadius: "6px", padding: "0.15rem 0.4rem", fontSize: "0.68rem", fontWeight: 600 }}>Cancelada</span>}
+
+            {/* Cards de totales — apiladas verticalmente */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem", marginBottom: "1.25rem" }}>
+              {[
+                { label: "Vendido este período", value: formatMoney(totalVendido) },
+                { label: "Comisión", value: formatMoney(comision), green: true },
+                { label: "Histórico total", value: formatMoney(totalHistorico) },
+              ].map((card, i) => (
+                <div key={i} style={{ background: "rgba(255,255,255,0.08)", borderRadius: "12px", padding: "0.85rem 1rem" }}>
+                  <div style={{ fontSize: "0.65rem", color: "rgba(255,255,255,0.45)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "0.3rem" }}>{card.label}</div>
+                  <div style={{ fontSize: "1.25rem", fontWeight: 700, color: card.green ? "#34C759" : "#fff", letterSpacing: "-0.01em" }}>{card.value}</div>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ flex: 1 }} />
+
+            {/* Botón pago */}
+            <button
+              onClick={() => setShowConfirm(true)}
+              disabled={comisionPagada || comision === 0}
+              style={{
+                width: "100%", padding: "0.8rem",
+                background: comisionPagada ? "rgba(52,199,89,0.15)" : comision === 0 ? "rgba(255,255,255,0.05)" : "#34C759",
+                color: comisionPagada ? "#34C759" : comision === 0 ? "rgba(255,255,255,0.3)" : "#fff",
+                border: "none", borderRadius: "12px",
+                fontWeight: 600, fontSize: "0.85rem",
+                cursor: comisionPagada || comision === 0 ? "default" : "pointer",
+                fontFamily: "'Inter', sans-serif",
+                transition: "all 0.2s",
+                display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem",
+                boxSizing: "border-box",
+                flexWrap: "wrap", textAlign: "center",
+              }}>
+              {comisionPagada
+                ? <span style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}><CheckCircle size={16} /> Comisión pagada</span>
+                : <span style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap", justifyContent: "center" }}><Banknote size={16} /> Pagar {formatMoney(comision)}</span>
+              }
+            </button>
+          </div>
+        </div>
+
+        {/* ══ Columna derecha: Órdenes / Gráfica ══ */}
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0, minWidth: 0 }}>
+
+          {/* Controles */}
+          <div style={{ background: "#fff", padding: "0.75rem 1.25rem", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #f5f5f7", flexShrink: 0, flexWrap: "wrap", gap: "0.5rem" }}>
+            <div style={{ display: "flex", gap: "0.25rem" }}>
+              <button onClick={() => setTab("ordenes")} style={tabStyle(tab === "ordenes")}>Órdenes</button>
+              <button onClick={() => setTab("grafica")} style={tabStyle(tab === "grafica")}>Gráfica</button>
+            </div>
+            <div style={{ display: "flex", gap: "0.35rem", background: "#f5f5f7", borderRadius: "10px", padding: "0.25rem" }}>
+              {["semana", "mes", "año"].map(r => <button key={r} onClick={() => setRango(r)} style={btnStyle(rango === r)}>{r}</button>)}
+            </div>
+          </div>
+
+          {/* Contenido scrolleable */}
+          <div style={{ flex: 1, overflowY: "auto", padding: "1.25rem", minHeight: 0 }}>
+            {loading ? (
+              <div style={{ textAlign: "center", color: "#6e6e73", padding: "3rem" }}>Cargando...</div>
+            ) : tab === "grafica" ? (
+              <div style={{ background: "#fff", borderRadius: "16px", padding: "1.25rem", boxShadow: "0 2px 12px rgba(0,0,0,0.04)" }}>
+                <div style={{ fontSize: "0.78rem", fontWeight: 600, color: "#6e6e73", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "1rem" }}>Ventas por día</div>
+                {chartData.length === 0 ? (
+                  <div style={{ textAlign: "center", color: "#6e6e73", padding: "2rem" }}>Sin datos</div>
+                ) : (
+                  <ResponsiveContainer width="100%" height={260}>
+                    <BarChart data={chartData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f5f5f7" />
+                      <XAxis dataKey="fecha" tick={{ fontSize: 10, fill: "#6e6e73" }} />
+                      <YAxis tick={{ fontSize: 10, fill: "#6e6e73" }} />
+                      <Tooltip formatter={v => formatMoney(v)} contentStyle={{ borderRadius: "10px", border: "none", boxShadow: "0 4px 16px rgba(0,0,0,0.1)" }} />
+                      <Bar dataKey="total" name="Ventas" fill="#007AFF" radius={[6, 6, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+                {ordenes.length === 0 ? (
+                  <div style={{ background: "#fff", borderRadius: "16px", padding: "2rem", textAlign: "center", color: "#6e6e73" }}>No hay órdenes en este período</div>
+                ) : ordenes.map((o, i) => {
+                  const esDep = !!o.departamento;
+                  const envio = esDep ? ENVIO_DEPTO : (o.costo_envio || 0);
+                  const neto = parseMonto(o.total_pagar) - envio;
+                  const cancelada = o.estado === "cancelada";
+                  return (
+                    <div key={o.id} style={{ background: "#fff", borderRadius: "12px", padding: "1rem 1.25rem", boxShadow: "0 2px 8px rgba(0,0,0,0.04)", opacity: cancelada ? 0.5 : 1, borderLeft: cancelada ? "3px solid #ff3b30" : "3px solid transparent" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                        <div>
+                          <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", marginBottom: "0.25rem" }}>
+                            <span style={{ background: esDep ? "rgba(88,86,214,0.1)" : "rgba(0,122,255,0.1)", color: esDep ? "#5856D6" : "#007AFF", borderRadius: "6px", padding: "0.15rem 0.4rem", fontSize: "0.68rem", fontWeight: 700 }}>{o.numero_ficha}</span>
+                            {cancelada && <span style={{ background: "#fff2f2", color: "#ff3b30", borderRadius: "6px", padding: "0.15rem 0.4rem", fontSize: "0.68rem", fontWeight: 600 }}>Cancelada</span>}
+                          </div>
+                          <div style={{ fontWeight: 600, color: "#1d1d1f", fontSize: "0.88rem" }}>{o.nombre_cliente || "Sin nombre"}</div>
+                          <div style={{ color: "#6e6e73", fontSize: "0.75rem", marginTop: "0.1rem" }}>{o.fecha_orden} · {esDep ? o.departamento : o.municipio}</div>
                         </div>
-                        <div style={{ fontWeight: 600, color: "#1d1d1f", fontSize: "0.88rem" }}>{o.nombre_cliente || "Sin nombre"}</div>
-                        <div style={{ color: "#6e6e73", fontSize: "0.75rem", marginTop: "0.1rem" }}>{o.fecha_orden} · {esDep ? o.departamento : o.municipio}</div>
-                      </div>
-                      <div style={{ textAlign: "right" }}>
-                        <div style={{ fontWeight: 700, color: "#1d1d1f", fontSize: "1rem" }}>{o.total_pagar}</div>
-                        <div style={{ color: "#34C759", fontSize: "0.75rem", fontWeight: 600 }}>+{formatMoney(neto * COMISION)}</div>
+                        <div style={{ textAlign: "right" }}>
+                          <div style={{ fontWeight: 700, color: "#1d1d1f", fontSize: "1rem" }}>{o.total_pagar}</div>
+                          <div style={{ color: "#34C759", fontSize: "0.75rem", fontWeight: 600 }}>+{formatMoney(neto * COMISION)}</div>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -1920,6 +1951,7 @@ function PerfilVendedor({ vendedor, onClose }) {
     </div>
   );
 }
+
 
 
 // ══ AdminVendedores ═══════════════════════════════════════
