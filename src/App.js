@@ -159,8 +159,10 @@ function Navbar({ user, onLogout, activeTab, setActiveTab, darkMode }) {
   }, []);
 
   const tabs = user.rol === "admin"
-    ? [{ id: "dashboard", icon: <Home size={15} />, label: "Inicio" }, { id: "ordenes", icon: <ClipboardList size={15} />, label: "Órdenes" }, { id: "estadisticas", icon: <BarChart2 size={15} />, label: "Estadísticas" }, { id: "vendedores", icon: <UserCheck size={15} />, label: "Vendedores" }, { id: "equipo", icon: <Users size={15} />, label: "Equipo" }]
-    : [];
+  ? [{ id: "dashboard", icon: <Home size={15} />, label: "Inicio" }, { id: "ordenes", icon: <ClipboardList size={15} />, label: "Órdenes" }, { id: "estadisticas", icon: <BarChart2 size={15} />, label: "Estadísticas" }, { id: "vendedores", icon: <UserCheck size={15} />, label: "Vendedores" }, { id: "equipo", icon: <Users size={15} />, label: "Equipo" }]
+  : user.rol === "contador"
+  ? [{ id: "dashboard", icon: <Home size={15} />, label: "Inicio" }, { id: "vendedores", icon: <UserCheck size={15} />, label: "Vendedores" }]
+  : [];
 
   function handleTabClick(id) {
     setActiveTab(id);
@@ -194,7 +196,7 @@ function Navbar({ user, onLogout, activeTab, setActiveTab, darkMode }) {
           />
 
           {/* Pestañas — solo desktop y solo admin */}
-          {!isMobile && user.rol === "admin" && (
+          {!isMobile && (user.rol === "admin" || user.rol === "contador") && (
             <div style={{ display: "flex", flex: 1, position: "relative" }} onMouseLeave={handleNavLeave}>
               {tabs.map(tab => (
                 <button
@@ -982,9 +984,6 @@ function Dashboard({ user }) {
           <h1 style={{ fontSize: "2rem", fontWeight: 700, color: "#1d1d1f", margin: "0 0 0.35rem", letterSpacing: "-0.03em" }}>
             {saludo}, {user.nombre.split(" ")[0]}! 👋
           </h1>
-          <p style={{ color: "#6e6e73", fontSize: "1rem", margin: "0 0 0.25rem" }}>
-            ¿Cuántas ventas hicimos hoy?
-          </p>
           <p style={{ color: "#007AFF", fontSize: "0.9rem", fontWeight: 500, margin: 0 }}>
             {frase}
           </p>
@@ -1068,6 +1067,171 @@ function Dashboard({ user }) {
                   </div>
                 );
               })()}
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ══ DashboardContador ══════════════════════════════════════════
+function DashboardContador({ user }) {
+  const [localesMes, setLocalesMes] = useState([]);
+  const [deptosMes, setDeptosMes] = useState([]);
+  const [pagos, setPagos] = useState([]);
+  const [todosVendedores, setTodosVendedores] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const VENDEDORES_EXTERNOS = [
+    "Maressa (Vend)",
+    "Yanci (Vend)",
+    "Sara Eunice (Vend)",
+    "Kevin (Vend)",
+    "Marisol (Vend)",
+    "Herbert (Vend)",
+    "Pedido Pagina Web",
+  ];
+
+  useEffect(() => { cargarDatos(); }, []);
+
+  async function cargarDatos() {
+    setLoading(true);
+    const hoy = new Date();
+    const inicioMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString().split("T")[0];
+
+    const [resL, resD, resPagos, resVendedores] = await Promise.all([
+      fetch(SUPABASE_URL + "/rest/v1/ordenes_locales?fecha_orden=gte." + inicioMes, {
+        headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
+      }),
+      fetch(SUPABASE_URL + "/rest/v1/ordenes_departamentales?fecha_orden=gte." + inicioMes, {
+        headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
+      }),
+      fetch(SUPABASE_URL + "/rest/v1/pagos_comisiones?fecha_pago=gte." + inicioMes, {
+        headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
+      }),
+      fetch(SUPABASE_URL + "/rest/v1/usuarios?rol=eq.vendedor&activo=eq.true", {
+        headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
+      }),
+    ]);
+
+    setLocalesMes(await resL.json());
+    setDeptosMes(await resD.json());
+    setPagos(await resPagos.json());
+    setTodosVendedores(await resVendedores.json());
+    setLoading(false);
+  }
+
+  // Comisiones por vendedor este mes
+  const porVendedor = {};
+  localesMes.filter(o => o.estado !== "cancelada").forEach(o => {
+    const v = o.quien_ingresa || "Sin asignar";
+    if (!VENDEDORES_EXTERNOS.includes(v)) return;
+    if (!porVendedor[v]) porVendedor[v] = { vendedor: v, total: 0 };
+    porVendedor[v].total += parseMonto(o.total_pagar) - (o.costo_envio || 0);
+  });
+  deptosMes.filter(o => o.estado !== "cancelada").forEach(o => {
+    const v = o.quien_ingresa || "Sin asignar";
+    if (!VENDEDORES_EXTERNOS.includes(v)) return;
+    if (!porVendedor[v]) porVendedor[v] = { vendedor: v, total: 0 };
+    porVendedor[v].total += parseMonto(o.total_pagar) - ENVIO_DEPTO;
+  });
+
+  const vendedoresConComision = Object.values(porVendedor).map(v => ({
+    ...v,
+    comision: v.total * COMISION,
+  }));
+
+  const vendedoresPagados = new Set(pagos.map(p => p.vendedor));
+
+  const pendientes = vendedoresConComision.filter(v => !vendedoresPagados.has(v.vendedor));
+  const pagados = vendedoresConComision.filter(v => vendedoresPagados.has(v.vendedor));
+
+  const totalPendiente = pendientes.reduce((s, v) => s + v.comision, 0);
+  const totalPagado = pagos.reduce((s, p) => s + p.monto, 0);
+
+  const topPendiente = [...pendientes].sort((a, b) => b.comision - a.comision)[0];
+
+  const hora = new Date().getHours();
+  const saludo = hora < 12 ? "¡Buenos días" : hora < 18 ? "¡Buenas tardes" : "¡Buenas noches";
+
+  return (
+    <div style={{ maxWidth: 1200, margin: "0 auto", padding: "2rem 1.5rem", position: "relative" }}>
+
+      {/* Bolitas de fondo */}
+      <div style={{ position: "fixed", top: 80, left: "10%", width: 400, height: 400, borderRadius: "50%", background: "radial-gradient(circle, rgba(0,122,255,0.08) 0%, transparent 70%)", pointerEvents: "none", zIndex: 0 }} />
+      <div style={{ position: "fixed", top: 200, right: "5%", width: 300, height: 300, borderRadius: "50%", background: "radial-gradient(circle, rgba(52,199,89,0.07) 0%, transparent 70%)", pointerEvents: "none", zIndex: 0 }} />
+
+      <div style={{ position: "relative", zIndex: 1 }}>
+        {/* Saludo */}
+        <div style={{ marginBottom: "2rem" }}>
+          <h1 style={{ fontSize: "2rem", fontWeight: 700, color: "#1d1d1f", margin: "0 0 0.35rem", letterSpacing: "-0.03em" }}>
+            {saludo}, {user.nombre.split(" ")[0]}! 👋
+          </h1>
+          <p style={{ color: "#6e6e73", fontSize: "1rem", margin: 0 }}>
+            Resumen de comisiones del mes
+          </p>
+        </div>
+
+        {loading ? (
+          <div style={{ textAlign: "center", color: "#6e6e73", padding: "3rem" }}>Cargando...</div>
+        ) : (
+          <>
+            {/* Cards principales */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem", marginBottom: "1.5rem" }}>
+              <div style={{ background: "#fff", borderRadius: "16px", padding: "1.25rem 1.5rem", boxShadow: "0 2px 12px rgba(0,0,0,0.04)" }}>
+                <div style={{ fontSize: "0.72rem", fontWeight: 600, color: "#6e6e73", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.5rem" }}>Comisiones pendientes</div>
+                <div style={{ fontSize: "1.75rem", fontWeight: 700, color: "#ff3b30", letterSpacing: "-0.02em" }}>{formatMoney(totalPendiente)}</div>
+                <div style={{ fontSize: "0.78rem", color: "#6e6e73", marginTop: "0.25rem" }}>{pendientes.length} vendedor{pendientes.length !== 1 ? "es" : ""} por pagar</div>
+              </div>
+
+              <div style={{ background: "#fff", borderRadius: "16px", padding: "1.25rem 1.5rem", boxShadow: "0 2px 12px rgba(0,0,0,0.04)" }}>
+                <div style={{ fontSize: "0.72rem", fontWeight: 600, color: "#6e6e73", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.5rem" }}>Comisiones pagadas</div>
+                <div style={{ fontSize: "1.75rem", fontWeight: 700, color: "#34C759", letterSpacing: "-0.02em" }}>{formatMoney(totalPagado)}</div>
+                <div style={{ fontSize: "0.78rem", color: "#6e6e73", marginTop: "0.25rem" }}>{pagados.length} pago{pagados.length !== 1 ? "s" : ""} este mes</div>
+              </div>
+
+              <div style={{ background: "#fff", borderRadius: "16px", padding: "1.25rem 1.5rem", boxShadow: "0 2px 12px rgba(0,0,0,0.04)" }}>
+                <div style={{ fontSize: "0.72rem", fontWeight: 600, color: "#6e6e73", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.5rem" }}>Total comisiones mes</div>
+                <div style={{ fontSize: "1.75rem", fontWeight: 700, color: "#007AFF", letterSpacing: "-0.02em" }}>{formatMoney(totalPendiente + totalPagado)}</div>
+                <div style={{ fontSize: "0.78rem", color: "#6e6e73", marginTop: "0.25rem" }}>{vendedoresConComision.length} vendedores activos</div>
+              </div>
+            </div>
+
+            {/* Top pendiente */}
+            {topPendiente && (
+              <div style={{ background: "#fff", borderRadius: "16px", padding: "1.25rem 1.5rem", boxShadow: "0 2px 12px rgba(0,0,0,0.04)", marginBottom: "1.5rem" }}>
+                <div style={{ fontSize: "0.72rem", fontWeight: 600, color: "#6e6e73", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.75rem" }}>Comisión más alta pendiente</div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                    <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#ff3b30", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: "0.9rem", fontWeight: 700 }}>
+                      {topPendiente.vendedor.charAt(0)}
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 600, color: "#1d1d1f", fontSize: "0.95rem" }}>{topPendiente.vendedor}</div>
+                      <div style={{ color: "#6e6e73", fontSize: "0.78rem" }}>Ventas: {formatMoney(topPendiente.total)}</div>
+                    </div>
+                  </div>
+                  <div style={{ fontSize: "1.4rem", fontWeight: 700, color: "#ff3b30" }}>{formatMoney(topPendiente.comision)}</div>
+                </div>
+              </div>
+            )}
+
+            {/* Lista de pendientes */}
+            <div style={{ background: "#fff", borderRadius: "16px", padding: "1.25rem 1.5rem", boxShadow: "0 2px 12px rgba(0,0,0,0.04)" }}>
+              <div style={{ fontSize: "0.72rem", fontWeight: 600, color: "#6e6e73", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.75rem" }}>Comisiones por pagar</div>
+              {pendientes.length === 0 ? (
+                <div style={{ color: "#34C759", fontSize: "0.88rem", fontWeight: 500 }}>✅ Todas las comisiones del mes están pagadas</div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                  {pendientes.sort((a, b) => b.comision - a.comision).map((v, i) => (
+                    <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.5rem 0", borderBottom: i < pendientes.length - 1 ? "1px solid #f5f5f7" : "none" }}>
+                      <span style={{ fontWeight: 500, color: "#1d1d1f", fontSize: "0.88rem" }}>{v.vendedor}</span>
+                      <span style={{ fontWeight: 700, color: "#ff3b30", fontSize: "0.95rem" }}>{formatMoney(v.comision)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </>
         )}
@@ -1600,9 +1764,13 @@ function PerfilVendedor({ vendedor, onClose }) {
       }} onClick={e => e.stopPropagation()}>
 
         {/* Header oscuro */}
-        <div style={{ background: "#1c1c1e", padding: "1.5rem", position: "relative" }}>
-          <button onClick={onClose} style={{ position: "absolute", top: "1rem", right: "1rem", background: "rgba(255,255,255,0.1)", border: "none", borderRadius: "50%", width: 32, height: 32, cursor: "pointer", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
-          <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "1.25rem" }}>
+        <div style={{ background: "#1c1c1e", padding: "1.5rem", position: "relative", overflow: "hidden" }}>
+          {/* Destellos difuminados azules */}
+          <div style={{ position: "absolute", width: 220, height: 220, borderRadius: "50%", background: "radial-gradient(circle, rgba(0,122,255,0.25) 0%, transparent 70%)", top: -100, right: -60, pointerEvents: "none" }} />
+          <div style={{ position: "absolute", width: 160, height: 160, borderRadius: "50%", background: "radial-gradient(circle, rgba(52,199,89,0.15) 0%, transparent 70%)", bottom: -80, left: -40, pointerEvents: "none" }} />
+
+          <button onClick={onClose} style={{ position: "absolute", top: "1rem", right: "1rem", background: "rgba(255,255,255,0.1)", border: "none", borderRadius: "50%", width: 32, height: 32, cursor: "pointer", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1 }}>✕</button>
+          <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "1.25rem", position: "relative", zIndex: 1 }}>
             <div style={{ width: 52, height: 52, borderRadius: "50%", background: "#007AFF", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: "1.2rem", fontWeight: 700 }}>
               {vendedor.charAt(0)}
             </div>
@@ -1612,7 +1780,7 @@ function PerfilVendedor({ vendedor, onClose }) {
             </div>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.75rem", marginBottom: "1rem" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.75rem", marginBottom: "1rem", position: "relative", zIndex: 1 }}>
             {[
               { label: "Vendido", value: formatMoney(totalVendido) },
               { label: "Comisión", value: formatMoney(comision), green: true },
@@ -1639,6 +1807,7 @@ function PerfilVendedor({ vendedor, onClose }) {
               fontFamily: "'Inter', sans-serif",
               transition: "all 0.2s",
               display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem",
+              position: "relative", zIndex: 1,
             }}>
             {comisionPagada
               ? <span style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}><CheckCircle size={16} /> Comisión pagada este mes</span>
@@ -2422,8 +2591,9 @@ function AdminEquipo() {
             <div style={{ marginBottom: "1.5rem" }}>
               <label style={labelStyle}>Rol</label>
               <select value={form.rol} onChange={e => setForm(p => ({ ...p, rol: e.target.value }))} style={inputStyle}>
-                <option value="vendedor">Vendedor</option>
+               <option value="vendedor">Vendedor</option>
                 <option value="admin">Admin</option>
+                 <option value="contador">Contador</option>
               </select>
             </div>
 
@@ -2452,9 +2622,9 @@ export default function App() {
   const [busquedaGlobal, setBusquedaGlobal] = useState("");
 
   function handleLogin(u) {
-    setUser(u);
-    localStorage.setItem("panel_user", JSON.stringify(u));
-    setActiveTab(u.rol === "admin" ? "dashboard" : "mis-ordenes");
+  setUser(u);
+  localStorage.setItem("panel_user", JSON.stringify(u));
+  setActiveTab(u.rol === "admin" || u.rol === "contador" ? "dashboard" : "mis-ordenes");
   }
 
   function handleLogout() {
@@ -2469,16 +2639,19 @@ export default function App() {
   if (!user) return <Login onLogin={handleLogin} />;
 
   function renderContent() {
-    if (user.rol === "admin") {
-      if(activeTab === "dashboard") return <Dashboard user={user} />;
-      if (activeTab === "ordenes") return <AdminOrdenes />;
-      if (activeTab === "estadisticas") return <AdminEstadisticas />;
-      if (activeTab === "vendedores") return <AdminVendedores />;
-      if (activeTab === "equipo") return <AdminEquipo />;
-    } else {
-      return <VendedorPanel user={user} />;
-    }
+  if (user.rol === "admin") {
+    if (activeTab === "dashboard") return <Dashboard user={user} />;
+    if (activeTab === "ordenes") return <AdminOrdenes />;
+    if (activeTab === "estadisticas") return <AdminEstadisticas />;
+    if (activeTab === "vendedores") return <AdminVendedores />;
+    if (activeTab === "equipo") return <AdminEquipo />;
+  } else if (user.rol === "contador") {
+    if (activeTab === "dashboard") return <DashboardContador user={user} />;
+    if (activeTab === "vendedores") return <AdminVendedores />;
+  } else {
+    return <VendedorPanel user={user} />;
   }
+}
 
   return (
     <div style={{ minHeight: "100vh", background: "#f5f5f7", fontFamily: "'Inter', sans-serif" }}>
