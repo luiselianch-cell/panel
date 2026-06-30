@@ -198,7 +198,7 @@ function Navbar({ user, onLogout, activeTab, setActiveTab, darkMode }) {
           />
 
           {/* Pestañas — solo desktop y solo admin */}
-          {!isMobile && (user.rol === "admin" || user.rol === "contador") && (
+          {!isMobile && (user.rol === "admin" || user.rol === "contador" || user.rol === "logistica") && (
             <div style={{ display: "flex", flex: 1, position: "relative" }} onMouseLeave={handleNavLeave}>
               {tabs.map(tab => (
                 <button
@@ -2645,6 +2645,7 @@ function AdminEquipo() {
                <option value="vendedor">Vendedor</option>
                 <option value="admin">Admin</option>
                  <option value="contador">Contador</option>
+                 <option value="logística">Logística</option>
               </select>
             </div>
 
