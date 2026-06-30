@@ -2676,7 +2676,7 @@ export default function App() {
   function handleLogin(u) {
   setUser(u);
   localStorage.setItem("panel_user", JSON.stringify(u));
-  setActiveTab(u.rol === "admin" || u.rol === "contador" ? "dashboard" : "mis-ordenes");
+  setActiveTab(u.rol === "admin" || u.rol === "contador" ? "dashboard" : "mis-ordenes" || u.rol === "logistica" ? "ordenes" : "mis-ordenes");
   }
 
   function handleLogout() {
