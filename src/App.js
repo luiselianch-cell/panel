@@ -162,6 +162,8 @@ function Navbar({ user, onLogout, activeTab, setActiveTab, darkMode }) {
   ? [{ id: "dashboard", icon: <Home size={15} />, label: "Inicio" }, { id: "ordenes", icon: <ClipboardList size={15} />, label: "Órdenes" }, { id: "estadisticas", icon: <BarChart2 size={15} />, label: "Estadísticas" }, { id: "vendedores", icon: <UserCheck size={15} />, label: "Vendedores" }, { id: "equipo", icon: <Users size={15} />, label: "Equipo" }]
   : user.rol === "contador"
   ? [{ id: "dashboard", icon: <Home size={15} />, label: "Inicio" }, { id: "vendedores", icon: <UserCheck size={15} />, label: "Vendedores" }]
+  : user.rol === "logística"
+  ? [{ id: "ordenes", icon: <ClipboardList size={15} />, label: "Órdenes" }]
   : [];
 
   function handleTabClick(id) {
@@ -338,9 +340,12 @@ function StatCard({ label, value, sub, accent }) {
 }
 
 // ══ Modal Editar Orden ════════════════════════════════════
-function ModalEditar({ orden, tipo, onClose, onSave }) {
+function ModalEditar({ orden, tipo, onClose, onSave, rolUsuario }) {
   const [form, setForm] = useState({ ...orden });
   const [saving, setSaving] = useState(false);
+
+  // Campos bloqueados para el rol "logística" — protegen comisiones y montos de venta
+  const bloqueado = rolUsuario === "logística";
 
   const MUNICIPIOS_LOCAL = ["SAN SALVADOR", "SANTA ANA", "SAN MIGUEL", "APOPA", "SOYAPANGO", "MEJICANOS", "SANTA TECLA", "CIUDAD DELGADO", "CUSCATANCINGO", "ILOPANGO", "TONACATEPEQUE", "ANTIGUO CUSCATLAN", "AYUTUXTEPEQUE", "Otro"];
   const DEPARTAMENTOS = ["SANTA ANA", "SAN MIGUEL", "AHUACHAPAN", "CABAÑAS", "CHALATENANGO", "CUSCATLAN", "LA LIBERTAD", "LA UNION", "LA PAZ", "MORAZAN", "SONSONATE", "SAN SALVADOR", "SAN VICENTE", "USULUTAN"];
@@ -381,6 +386,13 @@ function ModalEditar({ orden, tipo, onClose, onSave }) {
     boxSizing: "border-box",
   };
 
+  const inputBloqueadoStyle = {
+    ...inputStyle,
+    opacity: 0.55,
+    cursor: "not-allowed",
+    background: "#ececec",
+  };
+
   const labelStyle = {
     display: "block", fontSize: "0.72rem", fontWeight: 600,
     color: "#6e6e73", textTransform: "uppercase",
@@ -413,6 +425,13 @@ function ModalEditar({ orden, tipo, onClose, onSave }) {
           <button onClick={onClose} style={{ background: "#f5f5f7", border: "none", borderRadius: "50%", width: 32, height: 32, cursor: "pointer", fontSize: "1rem", display: "flex", alignItems: "center", justifyContent: "center", color: "#6e6e73" }}>✕</button>
         </div>
 
+        {/* Aviso de campos bloqueados para logística */}
+        {bloqueado && (
+          <div style={{ background: "#fff7e6", borderRadius: "10px", padding: "0.6rem 0.85rem", marginBottom: "1rem", fontSize: "0.78rem", color: "#a87000", flexShrink: 0 }}>
+            🔒 El total y el vendedor asignado no se pueden modificar desde esta cuenta.
+          </div>
+        )}
+
         {/* Contenido scrolleable */}
         <div style={{ flex: 1, overflowY: "auto", paddingRight: "0.25rem" }}>
 
@@ -438,7 +457,7 @@ function ModalEditar({ orden, tipo, onClose, onSave }) {
             </div>
             <div style={fieldStyle}>
               <label style={labelStyle}>Total a pagar</label>
-              <input name="total_pagar" value={form.total_pagar || ""} onChange={handleChange} style={inputStyle} placeholder="$0.00" />
+              <input name="total_pagar" value={form.total_pagar || ""} onChange={handleChange} disabled={bloqueado} style={bloqueado ? inputBloqueadoStyle : inputStyle} placeholder="$0.00" />
             </div>
           </div>
 
@@ -525,7 +544,7 @@ function ModalEditar({ orden, tipo, onClose, onSave }) {
             </div>
             <div style={fieldStyle}>
               <label style={labelStyle}>Quién ingresa</label>
-              <select name="quien_ingresa" value={form.quien_ingresa || ""} onChange={handleChange} style={inputStyle}>
+              <select name="quien_ingresa" value={form.quien_ingresa || ""} onChange={handleChange} disabled={bloqueado} style={bloqueado ? inputBloqueadoStyle : inputStyle}>
                 {QUIEN_INGRESA.map(q => <option key={q} value={q}>{q}</option>)}
               </select>
             </div>
@@ -566,7 +585,7 @@ function ModalEditar({ orden, tipo, onClose, onSave }) {
 
 
 // ══ TablaOrdenes ══════════════════════════════════════════
-function TablaOrdenes({ ordenes, tipo, onUpdateEnvio, esAdmin, onSave }) {
+function TablaOrdenes({ ordenes, tipo, onUpdateEnvio, esAdmin, rolUsuario, onSave }) {
   const [ordenEditar, setOrdenEditar] = useState(null);
   const [tipoEditar, setTipoEditar] = useState(null);
   const [copiado, setCopiado] = useState(null);
@@ -574,7 +593,6 @@ function TablaOrdenes({ ordenes, tipo, onUpdateEnvio, esAdmin, onSave }) {
     const obj = {};
     ordenes.forEach(o => { obj[o.id] = o.costo_envio || 0; });
     return obj;
-  
   });
 
   function handleEnvioChange(id, valor) {
@@ -584,16 +602,16 @@ function TablaOrdenes({ ordenes, tipo, onUpdateEnvio, esAdmin, onSave }) {
   function handleEnvioBlur(id, valor, tipo) {
     onUpdateEnvio && onUpdateEnvio(id, valor, tipo);
   }
-  
-  async function cancelarOrden(id, tipo) {
-  const tabla = tipo === "local" ? "ordenes_locales" : "ordenes_departamentales";
-  await fetch(SUPABASE_URL + "/rest/v1/" + tabla + "?id=eq." + id, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
-    body: JSON.stringify({ estado: "cancelada" }),
-  });
-  onSave && onSave();
-}
+
+  async function cancelarOrden(id, tipo, nuevoEstado = "cancelada") {
+    const tabla = tipo === "local" ? "ordenes_locales" : "ordenes_departamentales";
+    await fetch(SUPABASE_URL + "/rest/v1/" + tabla + "?id=eq." + id, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
+      body: JSON.stringify({ estado: nuevoEstado }),
+    });
+    onSave && onSave();
+  }
 
   return (
     <div style={{ overflowX: "auto" }}>
@@ -607,14 +625,14 @@ function TablaOrdenes({ ordenes, tipo, onUpdateEnvio, esAdmin, onSave }) {
         </thead>
         <tbody>
           {ordenes.length === 0 && (
-            <tr><td colSpan={10} style={{ padding: "3rem", textAlign: "center", color: "#6e6e73" }}>No hay órdenes</td></tr>
+            <tr><td colSpan={11} style={{ padding: "3rem", textAlign: "center", color: "#6e6e73" }}>No hay órdenes</td></tr>
           )}
           {ordenes.map((o, i) => {
             const total = parseMonto(o.total_pagar);
             const envio = tipo === "departamental" ? ENVIO_DEPTO : (envios[o.id] || 0);
             const neto = total - envio;
             return (
-              <tr key={o.id} onClick={() => { setOrdenEditar(o); setTipoEditar(tipo); }}    style={{ borderBottom: "1px solid #f5f5f7", cursor: "pointer" }}>
+              <tr key={o.id} onClick={() => { setOrdenEditar(o); setTipoEditar(tipo); }} style={{ borderBottom: "1px solid #f5f5f7", cursor: "pointer" }}>
                 <td style={{ padding: "0.75rem 1rem", fontWeight: 700, color: "#007AFF" }}>#{o.numero_ficha || "-"}</td>
                 <td style={{ padding: "0.75rem 1rem", color: "#6e6e73" }}>{o.fecha_orden}</td>
                 <td style={{ padding: "0.75rem 1rem", fontWeight: 500 }}>{o.nombre_cliente || "Sin nombre"}</td>
@@ -626,32 +644,33 @@ function TablaOrdenes({ ordenes, tipo, onUpdateEnvio, esAdmin, onSave }) {
                     <span style={{ color: "#ff3b30", fontSize: "0.82rem" }}>-${ENVIO_DEPTO}</span>
                   ) : esAdmin ? (
                     <input
-  type="text"
-  inputMode="decimal"
-  defaultValue={envios[o.id] || 0}
-  onClick={e => e.stopPropagation()}
-  onFocus={e => { 
-    e.stopPropagation();
-    e.target.style.border = "1.5px solid #007AFF";}}
-  onBlur={e => {
-    e.target.style.border = "1.5px solid #e5e5ea";
-    handleEnvioChange(o.id, e.target.value);
-    handleEnvioBlur(o.id, e.target.value, "local");
-  }}
-  style={{
-    width: 70,
-    padding: "0.35rem 0.6rem",
-    border: "1.5px solid #e5e5ea",
-    borderRadius: "8px",
-    fontSize: "0.82rem",
-    outline: "none",
-    background: "#f5f5f7",
-    color: "#1d1d1f",
-    fontFamily: "'Inter', sans-serif",
-    fontWeight: 500,
-    textAlign: "center",
-  }}
-/>
+                      type="text"
+                      inputMode="decimal"
+                      defaultValue={envios[o.id] || 0}
+                      onClick={e => e.stopPropagation()}
+                      onFocus={e => {
+                        e.stopPropagation();
+                        e.target.style.border = "1.5px solid #007AFF";
+                      }}
+                      onBlur={e => {
+                        e.target.style.border = "1.5px solid #e5e5ea";
+                        handleEnvioChange(o.id, e.target.value);
+                        handleEnvioBlur(o.id, e.target.value, "local");
+                      }}
+                      style={{
+                        width: 70,
+                        padding: "0.35rem 0.6rem",
+                        border: "1.5px solid #e5e5ea",
+                        borderRadius: "8px",
+                        fontSize: "0.82rem",
+                        outline: "none",
+                        background: "#f5f5f7",
+                        color: "#1d1d1f",
+                        fontFamily: "'Inter', sans-serif",
+                        fontWeight: 500,
+                        textAlign: "center",
+                      }}
+                    />
                   ) : (
                     <span style={{ color: "#ff3b30", fontSize: "0.82rem" }}>-${(envios[o.id] || 0).toFixed(2)}</span>
                   )}
@@ -660,68 +679,68 @@ function TablaOrdenes({ ordenes, tipo, onUpdateEnvio, esAdmin, onSave }) {
                 <td style={{ padding: "0.75rem 1rem", color: "#6e6e73" }}>{o.perfil_salio_1 || o.perfil_salio || "-"}</td>
                 <td style={{ padding: "0.75rem 1rem", color: "#6e6e73" }}>{o.quien_ingresa}</td>
 
-      <td style={{ padding: "0.75rem 1rem" }} onClick={e => e.stopPropagation()}>
-  <div style={{ display: "flex", gap: "0.4rem", alignItems: "center" }}>
-    
-    {o.estado === "cancelada" && (
-      <span style={{ background: "#fff2f2", color: "#ff3b30", borderRadius: "6px", padding: "0.15rem 0.4rem", fontSize: "0.68rem" }}>Cancelada</span>
-    )}
+                <td style={{ padding: "0.75rem 1rem" }} onClick={e => e.stopPropagation()}>
+                  <div style={{ display: "flex", gap: "0.4rem", alignItems: "center" }}>
 
-    <button onClick={() => cancelarOrden(o.id, tipo, o.estado === "cancelada" ? "completada" : "cancelada")} 
-      title={o.estado === "cancelada" ? "Reactivar" : "Cancelar"}
-      style={{
-        padding: "0.3rem", background: o.estado === "cancelada" ? "#f0fff4" : "#fff2f2",
-        border: "none", borderRadius: "6px", fontSize: "0.78rem",
-        cursor: "pointer", color: o.estado === "cancelada" ? "#34C759" : "#ff3b30",
-        display: "flex", alignItems: "center",
-      }}>
-      {o.estado === "cancelada" ? <RefreshCw size={14} /> : <XCircle size={14} />}
-    </button>
+                    {o.estado === "cancelada" && (
+                      <span style={{ background: "#fff2f2", color: "#ff3b30", borderRadius: "6px", padding: "0.15rem 0.4rem", fontSize: "0.68rem" }}>Cancelada</span>
+                    )}
 
-   <button onClick={() => {
-  const texto = "Orden " + o.numero_ficha +
-    "\n📅 " + o.fecha_orden +
-    "\n📦 " + o.articulos +
-    "\n👤 " + (o.nombre_cliente || "Sin nombre") +
-    "\n📱 " + (o.numero_contacto || "-") +
-    "\n📍 " + (o.municipio || o.departamento || "-") +
-    "\n🏠 " + (o.direccion_entrega || "-") +
-    "\n🕐 " + (o.hora_limite || "-") +
-    "\n💰 " + o.total_pagar +
-    "\n💳 " + o.forma_pago + " | " + o.tipo_comprobante +
-    "\n📲 " + (o.perfil_salio_1 || o.perfil_salio || "-") +
-    "\n👥 " + o.quien_ingresa +
-    "\n📝 " + (o.comentario_libre || "Sin notas");
-  navigator.clipboard.writeText(texto);
-  setCopiado(o.id);
-  setTimeout(() => setCopiado(null), 2000);
-}} title={copiado === o.id ? "¡Copiado!" : "Copiar orden"}
-  style={{
-    padding: "0.3rem", 
-    background: copiado === o.id ? "rgba(52,199,89,0.1)" : "#f5f5f7",
-    border: "none", borderRadius: "6px",
-    cursor: "pointer", 
-    color: copiado === o.id ? "#34C759" : "#6e6e73",
-    display: "flex", alignItems: "center",
-  }}>
-  {copiado === o.id ? <Check size={14} /> : <Copy size={14} />}
-</button>
-  </div>
+                    <button onClick={() => cancelarOrden(o.id, tipo, o.estado === "cancelada" ? "completada" : "cancelada")}
+                      title={o.estado === "cancelada" ? "Reactivar" : "Cancelar"}
+                      style={{
+                        padding: "0.3rem", background: o.estado === "cancelada" ? "#f0fff4" : "#fff2f2",
+                        border: "none", borderRadius: "6px", fontSize: "0.78rem",
+                        cursor: "pointer", color: o.estado === "cancelada" ? "#34C759" : "#ff3b30",
+                        display: "flex", alignItems: "center",
+                      }}>
+                      {o.estado === "cancelada" ? <RefreshCw size={14} /> : <XCircle size={14} />}
+                    </button>
 
-</td>
+                    <button onClick={() => {
+                      const texto = "Orden " + o.numero_ficha +
+                        "\n📅 " + o.fecha_orden +
+                        "\n📦 " + o.articulos +
+                        "\n👤 " + (o.nombre_cliente || "Sin nombre") +
+                        "\n📱 " + (o.numero_contacto || "-") +
+                        "\n📍 " + (o.municipio || o.departamento || "-") +
+                        "\n🏠 " + (o.direccion_entrega || "-") +
+                        "\n🕐 " + (o.hora_limite || "-") +
+                        "\n💰 " + o.total_pagar +
+                        "\n💳 " + o.forma_pago + " | " + o.tipo_comprobante +
+                        "\n📲 " + (o.perfil_salio_1 || o.perfil_salio || "-") +
+                        "\n👥 " + o.quien_ingresa +
+                        "\n📝 " + (o.comentario_libre || "Sin notas");
+                      navigator.clipboard.writeText(texto);
+                      setCopiado(o.id);
+                      setTimeout(() => setCopiado(null), 2000);
+                    }} title={copiado === o.id ? "¡Copiado!" : "Copiar orden"}
+                      style={{
+                        padding: "0.3rem",
+                        background: copiado === o.id ? "rgba(52,199,89,0.1)" : "#f5f5f7",
+                        border: "none", borderRadius: "6px",
+                        cursor: "pointer",
+                        color: copiado === o.id ? "#34C759" : "#6e6e73",
+                        display: "flex", alignItems: "center",
+                      }}>
+                      {copiado === o.id ? <Check size={14} /> : <Copy size={14} />}
+                    </button>
+                  </div>
+                </td>
               </tr>
             );
           })}
         </tbody>
       </table>
       {ordenEditar && (
-  <ModalEditar
-    orden={ordenEditar}
-    tipo={tipoEditar}
-    onClose={() => setOrdenEditar(null)}
-    onSave={() => {setOrdenEditar(null); onSave && onSave(); }}
-  />
-)}
+        <ModalEditar
+          orden={ordenEditar}
+          tipo={tipoEditar}
+          rolUsuario={rolUsuario}
+          onClose={() => setOrdenEditar(null)}
+          onSave={() => { setOrdenEditar(null); onSave && onSave(); }}
+        />
+      )}
     </div>
   );
 }
@@ -1242,7 +1261,7 @@ function DashboardContador({ user }) {
 
 
 // ══ AdminOrdenes ══════════════════════════════════════════
-function AdminOrdenes() {
+function AdminOrdenes({ rolUsuario }) {
   const [locales, setLocales] = useState([]);
   const [deptos, setDeptos] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -1252,6 +1271,8 @@ function AdminOrdenes() {
   const [tab, setTab] = useState("todos");
   const [busqueda, setBusqueda] = useState("");
   const [rangoFecha, setRangoFecha] = useState("dia");
+
+  const esAdminCompleto = rolUsuario === "admin";
 
   const vendedores = [
     "Tecno Gadget - Fer", "Tecno Gadget - Jefferson", "Tecno Gadget - Wendy",
@@ -1298,28 +1319,27 @@ function AdminOrdenes() {
   }
 
   function exportarExcel() {
-  const datos = todosF.map(o => ({
-    "Ficha": o.numero_ficha,
-    "Fecha": o.fecha_orden,
-    "Cliente": o.nombre_cliente,
-    "Artículos": o.articulos,
-    "Municipio/Depto": o.municipio || o.departamento,
-    "Dirección": o.direccion_entrega,
-    "Total": o.total_pagar,
-    "Envío": o.costo_envio || ENVIO_DEPTO,
-    "Neto": parseMonto(o.total_pagar) - (o.departamento ? ENVIO_DEPTO : (o.costo_envio || 0)),
-    "Forma de pago": o.forma_pago,
-    "Perfil": o.perfil_salio_1 || o.perfil_salio,
-    "Vendedor": o.quien_ingresa,
-    "Estado": o.estado,
-  }));
+    const datos = todosF.map(o => ({
+      "Ficha": o.numero_ficha,
+      "Fecha": o.fecha_orden,
+      "Cliente": o.nombre_cliente,
+      "Artículos": o.articulos,
+      "Municipio/Depto": o.municipio || o.departamento,
+      "Dirección": o.direccion_entrega,
+      "Total": o.total_pagar,
+      "Envío": o.costo_envio || ENVIO_DEPTO,
+      "Neto": parseMonto(o.total_pagar) - (o.departamento ? ENVIO_DEPTO : (o.costo_envio || 0)),
+      "Forma de pago": o.forma_pago,
+      "Perfil": o.perfil_salio_1 || o.perfil_salio,
+      "Vendedor": o.quien_ingresa,
+      "Estado": o.estado,
+    }));
 
-  const ws = XLSX.utils.json_to_sheet(datos);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Órdenes");
-  XLSX.writeFile(wb, "ordenes-" + filtroFecha + ".xlsx");
-}
-
+    const ws = XLSX.utils.json_to_sheet(datos);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Órdenes");
+    XLSX.writeFile(wb, "ordenes-" + filtroFecha + ".xlsx");
+  }
 
   function filtrar(lista) {
     return lista.filter(o => {
@@ -1379,15 +1399,18 @@ function AdminOrdenes() {
           fontFamily: "'Inter', sans-serif", fontWeight: rangoFecha === "todo" ? 600 : 400,
         }}>
           {rangoFecha === "todo" ? "Hasta hoy" : "Solo hoy"}
-        </button> 
-       <button onClick={exportarExcel} style={{
-  padding: "0.5rem 0.85rem", background: "#34C759", color: "#fff",
-  border: "none", borderRadius: "10px", fontWeight: 600,
-  fontSize: "0.85rem", cursor: "pointer", fontFamily: "'Inter', sans-serif",
-  display: "flex", alignItems: "center", gap: "0.35rem",
-}}>
-  <Download size={15} /> Exportar Excel
-</button>
+        </button>
+
+        {esAdminCompleto && (
+          <button onClick={exportarExcel} style={{
+            padding: "0.5rem 0.85rem", background: "#34C759", color: "#fff",
+            border: "none", borderRadius: "10px", fontWeight: 600,
+            fontSize: "0.85rem", cursor: "pointer", fontFamily: "'Inter', sans-serif",
+            display: "flex", alignItems: "center", gap: "0.35rem",
+          }}>
+            <Download size={15} /> Exportar Excel
+          </button>
+        )}
 
         <select value={filtroVendedor} onChange={e => setFiltroVendedor(e.target.value)} style={selectStyle}>
           <option value="">Todos los vendedores</option>
@@ -1402,10 +1425,6 @@ function AdminOrdenes() {
           value={busqueda}
           onChange={e => setBusqueda(e.target.value)}
           style={{ ...selectStyle, minWidth: 220 }}
-
-        
-
-
         />
       </div>
 
@@ -1426,12 +1445,12 @@ function AdminOrdenes() {
         {loading
           ? <div style={{ padding: "3rem", textAlign: "center", color: "#6e6e73" }}>Cargando...</div>
           : tab === "todos"
-          ? <TablaOrdenes ordenes={todosF} tipo="local" onUpdateEnvio={actualizarEnvio} esAdmin={true} onSave={cargarOrdenes} />
+          ? <TablaOrdenes ordenes={todosF} tipo="local" onUpdateEnvio={actualizarEnvio} esAdmin={esAdminCompleto} rolUsuario={rolUsuario} onSave={cargarOrdenes} />
           : tab === "locales"
-          ? <TablaOrdenes ordenes={lF} tipo="local" onUpdateEnvio={actualizarEnvio} esAdmin={true} onSave={cargarOrdenes} />
-          : <TablaOrdenes ordenes={dF} tipo="departamental" esAdmin={true} onSave={cargarOrdenes} />
+          ? <TablaOrdenes ordenes={lF} tipo="local" onUpdateEnvio={actualizarEnvio} esAdmin={esAdminCompleto} rolUsuario={rolUsuario} onSave={cargarOrdenes} />
+          : <TablaOrdenes ordenes={dF} tipo="departamental" esAdmin={esAdminCompleto} rolUsuario={rolUsuario} onSave={cargarOrdenes} />
         }
-      </div> 
+      </div>
     </div>
   );
 }
@@ -2680,6 +2699,8 @@ export default function App() {
   } else if (user.rol === "contador") {
     if (activeTab === "dashboard") return <DashboardContador user={user} />;
     if (activeTab === "vendedores") return <AdminVendedores />;
+  } else if (user.rol === "logística") {
+    if (activeTab === "ordenes") return <AdminOrdenes rolUsuario="logística" />;
   } else {
     return <VendedorPanel user={user} />;
   }
