@@ -5,8 +5,8 @@
 import { useState, useEffect, useRef } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from "recharts";
 // eslint-disable-next-line no-unused-vars
-import { Home, ClipboardList, BarChart2, Users, UserCheck, Search, Menu, MessageCircle, Eye, EyeOff } from "lucide-react";
-import { Copy, XCircle, RefreshCw, Check, Pencil, UserX, Download, CheckCircle, Banknote } from "lucide-react";
+import { Home, ClipboardList, BarChart2, Users, UserCheck, Search, Menu, MessageCircle, Eye, EyeOff, Clock } from "lucide-react";
+import { Copy, XCircle, RefreshCw, Check, Pencil, UserX, Download, CheckCircle, Banknote, ShoppingBag, Truck } from "lucide-react";
 import * as XLSX from 'xlsx'
 
 const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL;
@@ -159,12 +159,24 @@ function Navbar({ user, onLogout, activeTab, setActiveTab, darkMode }) {
   }, []);
 
   const tabs = user.rol === "admin"
-  ? [{ id: "dashboard", icon: <Home size={15} />, label: "Inicio" }, { id: "ordenes", icon: <ClipboardList size={15} />, label: "Órdenes" }, { id: "estadisticas", icon: <BarChart2 size={15} />, label: "Estadísticas" }, { id: "vendedores", icon: <UserCheck size={15} />, label: "Vendedores" }, { id: "equipo", icon: <Users size={15} />, label: "Equipo" }]
-  : user.rol === "contador"
-  ? [{ id: "dashboard", icon: <Home size={15} />, label: "Inicio" }, { id: "vendedores", icon: <UserCheck size={15} />, label: "Vendedores" }]
-  : user.rol === "logística"
-  ? [{ id: "ordenes", icon: <ClipboardList size={15} />, label: "Órdenes" }]
+  ? [
+      { id: "dashboard", icon: <Home size={15} />, label: "Inicio" },
+      { id: "ordenes", icon: <ClipboardList size={15} />, label: "Órdenes" },
+      { id: "estadisticas", icon: <BarChart2 size={15} />, label: "Estadísticas" },
+      { id: "vendedores", icon: <UserCheck size={15} />, label: "Vendedores" },
+      { id: "tienda", icon: <ShoppingBag size={15} />, label: "Tienda" },
+      { id: "equipo", icon: <Users size={15} />, label: "Equipo" },
+    ]
+  : user.rol === "operaciones"
+  ? [
+      { id: "ordenes", icon: <ClipboardList size={15} />, label: "Órdenes" },
+      { id: "tienda", icon: <ShoppingBag size={15} />, label: "Tienda" },
+      { id: "cobros", icon: <Banknote size={15} />, label: "Cobros" },
+    ]
+  : user.rol === "repartidor"
+  ? [{ id: "mis-entregas", icon: <Truck size={15} />, label: "Mis Entregas" }]
   : [];
+
 
   function handleTabClick(id) {
     setActiveTab(id);
@@ -198,7 +210,7 @@ function Navbar({ user, onLogout, activeTab, setActiveTab, darkMode }) {
           />
 
           {/* Pestañas — solo desktop y solo admin */}
-          {!isMobile && (user.rol === "admin" || user.rol === "contador" || user.rol === "logistica") && (
+          {!isMobile && (user.rol === "admin" || user.rol === "operaciones") && (
             <div style={{ display: "flex", flex: 1, position: "relative" }} onMouseLeave={handleNavLeave}>
               {tabs.map(tab => (
                 <button
@@ -278,7 +290,7 @@ function Navbar({ user, onLogout, activeTab, setActiveTab, darkMode }) {
           </div>
 
           {/* Hamburguesa — solo admin en móvil */}
-          {isMobile && user.rol === "admin" && (
+          {isMobile && (user.rol === "admin" || user.rol === "operaciones") && (
             <button onClick={() => setShowMenu(!showMenu)} style={{
               background: "transparent", border: "none", cursor: "pointer",
               padding: "0.4rem", borderRadius: "8px", color: textColor,
@@ -291,7 +303,7 @@ function Navbar({ user, onLogout, activeTab, setActiveTab, darkMode }) {
       </div>
 
       {/* Menú móvil — solo admin */}
-      {isMobile && showMenu && user.rol === "admin" && (
+      {isMobile && showMenu && (user.rol === "admin" || user.rol === "operaciones") && (
         <div style={{
           background: darkMode ? "rgba(28,28,30,0.97)" : "rgba(255,255,255,0.97)",
           backdropFilter: "blur(20px)",
@@ -585,7 +597,7 @@ function ModalEditar({ orden, tipo, onClose, onSave, rolUsuario }) {
 
 
 // ══ TablaOrdenes ══════════════════════════════════════════
-function TablaOrdenes({ ordenes, tipo, onUpdateEnvio, esAdmin, rolUsuario, onSave }) {
+function TablaOrdenes({ ordenes, tipo, onUpdateEnvio, esAdmin, rolUsuario, onSave, onAprobar }) {
   const [ordenEditar, setOrdenEditar] = useState(null);
   const [tipoEditar, setTipoEditar] = useState(null);
   const [copiado, setCopiado] = useState(null);
@@ -631,8 +643,9 @@ function TablaOrdenes({ ordenes, tipo, onUpdateEnvio, esAdmin, rolUsuario, onSav
             const total = parseMonto(o.total_pagar);
             const envio = tipo === "departamental" ? ENVIO_DEPTO : (envios[o.id] || 0);
             const neto = total - envio;
+            const pendiente = o.estado_flujo === "pendiente_aprobacion" || !o.estado_flujo;
             return (
-              <tr key={o.id} onClick={() => { setOrdenEditar(o); setTipoEditar(tipo); }} style={{ borderBottom: "1px solid #f5f5f7", cursor: "pointer" }}>
+              <tr key={o.id} onClick={() => { setOrdenEditar(o); setTipoEditar(tipo); }} style={{ borderBottom: "1px solid #f5f5f7", cursor: "pointer", background: pendiente ? "rgba(255,149,0,0.03)" : "transparent" }}>
                 <td style={{ padding: "0.75rem 1rem", fontWeight: 700, color: "#007AFF" }}>#{o.numero_ficha || "-"}</td>
                 <td style={{ padding: "0.75rem 1rem", color: "#6e6e73" }}>{o.fecha_orden}</td>
                 <td style={{ padding: "0.75rem 1rem", fontWeight: 500 }}>{o.nombre_cliente || "Sin nombre"}</td>
@@ -658,17 +671,11 @@ function TablaOrdenes({ ordenes, tipo, onUpdateEnvio, esAdmin, rolUsuario, onSav
                         handleEnvioBlur(o.id, e.target.value, "local");
                       }}
                       style={{
-                        width: 70,
-                        padding: "0.35rem 0.6rem",
-                        border: "1.5px solid #e5e5ea",
-                        borderRadius: "8px",
-                        fontSize: "0.82rem",
-                        outline: "none",
-                        background: "#f5f5f7",
-                        color: "#1d1d1f",
-                        fontFamily: "'Inter', sans-serif",
-                        fontWeight: 500,
-                        textAlign: "center",
+                        width: 70, padding: "0.35rem 0.6rem",
+                        border: "1.5px solid #e5e5ea", borderRadius: "8px",
+                        fontSize: "0.82rem", outline: "none",
+                        background: "#f5f5f7", color: "#1d1d1f",
+                        fontFamily: "'Inter', sans-serif", fontWeight: 500, textAlign: "center",
                       }}
                     />
                   ) : (
@@ -680,23 +687,59 @@ function TablaOrdenes({ ordenes, tipo, onUpdateEnvio, esAdmin, rolUsuario, onSav
                 <td style={{ padding: "0.75rem 1rem", color: "#6e6e73" }}>{o.quien_ingresa}</td>
 
                 <td style={{ padding: "0.75rem 1rem" }} onClick={e => e.stopPropagation()}>
-                  <div style={{ display: "flex", gap: "0.4rem", alignItems: "center" }}>
+                  <div style={{ display: "flex", gap: "0.4rem", alignItems: "center", flexWrap: "wrap" }}>
 
+                    {/* Badge + botón aprobar — solo para pendientes y admin */}
+                    {pendiente && esAdmin && (
+                      <>
+                        <span style={{
+                          background: "rgba(255,149,0,0.1)", color: "#FF9500",
+                          borderRadius: "6px", padding: "0.15rem 0.4rem",
+                          fontSize: "0.68rem", fontWeight: 600, whiteSpace: "nowrap",
+                        }}>Pendiente</span>
+                        <button
+                          onClick={() => onAprobar && onAprobar(o.id, tipo)}
+                          title="Aprobar orden"
+                          style={{
+                            padding: "0.3rem 0.55rem",
+                            background: "rgba(52,199,89,0.1)",
+                            border: "none", borderRadius: "6px",
+                            cursor: "pointer", color: "#34C759",
+                            display: "flex", alignItems: "center", gap: "0.3rem",
+                            fontSize: "0.75rem", fontWeight: 600, whiteSpace: "nowrap",
+                          }}>
+                          <CheckCircle size={13} /> Aprobar
+                        </button>
+                      </>
+                    )}
+
+                    {/* Badge aprobada */}
+                    {o.estado_flujo === "aprobada" && (
+                      <span style={{
+                        background: "rgba(0,122,255,0.1)", color: "#007AFF",
+                        borderRadius: "6px", padding: "0.15rem 0.4rem",
+                        fontSize: "0.68rem", fontWeight: 600,
+                      }}>✓ Aprobada</span>
+                    )}
+
+                    {/* Badge cancelada */}
                     {o.estado === "cancelada" && (
                       <span style={{ background: "#fff2f2", color: "#ff3b30", borderRadius: "6px", padding: "0.15rem 0.4rem", fontSize: "0.68rem" }}>Cancelada</span>
                     )}
 
+                    {/* Botón cancelar/reactivar */}
                     <button onClick={() => cancelarOrden(o.id, tipo, o.estado === "cancelada" ? "completada" : "cancelada")}
                       title={o.estado === "cancelada" ? "Reactivar" : "Cancelar"}
                       style={{
                         padding: "0.3rem", background: o.estado === "cancelada" ? "#f0fff4" : "#fff2f2",
-                        border: "none", borderRadius: "6px", fontSize: "0.78rem",
+                        border: "none", borderRadius: "6px",
                         cursor: "pointer", color: o.estado === "cancelada" ? "#34C759" : "#ff3b30",
                         display: "flex", alignItems: "center",
                       }}>
                       {o.estado === "cancelada" ? <RefreshCw size={14} /> : <XCircle size={14} />}
                     </button>
 
+                    {/* Botón copiar */}
                     <button onClick={() => {
                       const texto = "Orden " + o.numero_ficha +
                         "\n📅 " + o.fecha_orden +
@@ -907,6 +950,7 @@ function GraficasComparativas() {
 function Dashboard({ user }) {
   const [locales, setLocales] = useState([]);
   const [deptos, setDeptos] = useState([]);
+  const [tienda, setTienda] = useState([]);
   const [loading, setLoading] = useState(true);
   const ultimaOrdenRef = useRef(null);
   const ordenesRef = useRef([]);
@@ -928,14 +972,15 @@ function Dashboard({ user }) {
     Promise.all([
       fetch(SUPABASE_URL + "/rest/v1/ordenes_locales?fecha_orden=eq." + hoy + "&order=creado_en.desc", { headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY } }),
       fetch(SUPABASE_URL + "/rest/v1/ordenes_departamentales?fecha_orden=eq." + hoy + "&order=creado_en.desc", { headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY } }),
-    ]).then(async ([resL, resD]) => {
+      fetch(SUPABASE_URL + "/rest/v1/ordenes_tienda?fecha_orden=eq." + hoy + "&order=creado_en.desc", { headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY } }),
+    ]).then(async ([resL, resD, resT]) => {
       const localesData = await resL.json();
       const deptosData = await resD.json();
+      const tiendaData = await resT.json();
 
       const todasNuevas = [...localesData, ...deptosData];
       const ultima = todasNuevas.sort((a, b) => new Date(b.creado_en) - new Date(a.creado_en))[0];
 
-      // Detectar orden nueva
       if (ultimaOrdenRef.current && ultima && ultima.id !== ultimaOrdenRef.current) {
         reproducirSonido();
         if (Notification.permission === "granted") {
@@ -947,7 +992,6 @@ function Dashboard({ user }) {
       }
       ultimaOrdenRef.current = ultima?.id;
 
-      // Detectar órdenes editadas
       todasNuevas.forEach(orden => {
         const anterior = ordenesRef.current.find(o => o.id === orden.id);
         if (anterior && JSON.stringify(anterior) !== JSON.stringify(orden)) {
@@ -963,6 +1007,7 @@ function Dashboard({ user }) {
 
       setLocales(localesData);
       setDeptos(deptosData);
+      setTienda(tiendaData);
       setLoading(false);
     });
   }
@@ -973,9 +1018,11 @@ function Dashboard({ user }) {
     return () => clearInterval(interval);
   }, []);
 
-  const totalL = locales.reduce((s, o) => s + parseMonto(o.total_pagar) - (o.costo_envio || 0), 0);
-  const totalD = deptos.reduce((s, o) => s + parseMonto(o.total_pagar) - ENVIO_DEPTO, 0);
-  const totalGeneral = totalL + totalD;
+  const totalL = locales.filter(o => o.estado !== "cancelada").reduce((s, o) => s + parseMonto(o.total_pagar) - (o.costo_envio || 0), 0);
+  const totalD = deptos.filter(o => o.estado !== "cancelada").reduce((s, o) => s + parseMonto(o.total_pagar) - ENVIO_DEPTO, 0);
+  const totalT = tienda.reduce((s, o) => s + parseMonto(o.total_pagar), 0);
+  const totalGeneral = totalL + totalD + totalT;
+  const pendientesAprobacion = [...locales, ...deptos].filter(o => o.estado_flujo === "pendiente_aprobacion" || !o.estado_flujo).length;
   const ultimaOrden = [...locales, ...deptos].sort((a, b) => new Date(b.creado_en) - new Date(a.creado_en))[0];
 
   const hora = new Date().getHours();
@@ -1008,19 +1055,34 @@ function Dashboard({ user }) {
           </p>
         </div>
 
+        {/* Alerta de órdenes pendientes */}
+        {pendientesAprobacion > 0 && (
+          <div style={{
+            background: "rgba(255,149,0,0.08)", border: "1px solid rgba(255,149,0,0.25)",
+            borderRadius: "12px", padding: "0.85rem 1.25rem", marginBottom: "1.5rem",
+            display: "flex", alignItems: "center", gap: "0.75rem",
+          }}>
+            <Clock size={18} color="#FF9500" />
+            <span style={{ color: "#FF9500", fontWeight: 600, fontSize: "0.88rem" }}>
+              {pendientesAprobacion} orden{pendientesAprobacion !== 1 ? "es" : ""} pendiente{pendientesAprobacion !== 1 ? "s" : ""} de aprobación
+            </span>
+          </div>
+        )}
+
         <GraficasComparativas />
 
-        {/* Cards principales */}
         {loading ? (
           <div style={{ textAlign: "center", color: "#6e6e73", padding: "3rem" }}>Cargando...</div>
         ) : (
           <>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem", marginBottom: "1.5rem" }}>
+            {/* Cards principales */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "1rem", marginBottom: "1.5rem" }}>
               {[
-                { label: "Total órdenes hoy", value: (locales.length + deptos.length).toString(), sub: locales.length + " locales · " + deptos.length + " deptos", accent: "#007AFF" },
-                { label: "Total vendido hoy", value: formatMoney(totalGeneral), sub: "Neto sin envíos", accent: "#1d1d1f" },
-                { label: "Locales", value: formatMoney(totalL), sub: locales.length + " órdenes" },
-                { label: "Departamentales", value: formatMoney(totalD), sub: deptos.length + " órdenes · -$" + ENVIO_DEPTO + " c/u" },
+                { label: "Total vendido hoy", value: formatMoney(totalGeneral), sub: "Online + Tienda", accent: "#007AFF" },
+                { label: "Órdenes online", value: (locales.length + deptos.length).toString(), sub: locales.length + " locales · " + deptos.length + " deptos" },
+                { label: "Ventas en tienda", value: formatMoney(totalT), sub: tienda.length + " venta" + (tienda.length !== 1 ? "s" : ""), accent: "#5856D6" },
+                { label: "Locales (neto)", value: formatMoney(totalL), sub: locales.length + " órdenes" },
+                { label: "Deptos (neto)", value: formatMoney(totalD), sub: deptos.length + " órdenes" },
               ].map((card, i) => (
                 <div key={i} style={{ background: "#fff", borderRadius: "16px", padding: "1.25rem 1.5rem", boxShadow: "0 2px 12px rgba(0,0,0,0.04)" }}>
                   <div style={{ fontSize: "0.72rem", fontWeight: 600, color: "#6e6e73", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.5rem" }}>{card.label}</div>
@@ -1030,25 +1092,52 @@ function Dashboard({ user }) {
               ))}
             </div>
 
-            {/* Última orden */}
-            {ultimaOrden && (
-              <div style={{ background: "#fff", borderRadius: "16px", padding: "1.25rem 1.5rem", boxShadow: "0 2px 12px rgba(0,0,0,0.04)", marginBottom: "1.5rem" }}>
-                <div style={{ fontSize: "0.72rem", fontWeight: 600, color: "#6e6e73", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.75rem" }}>Última orden recibida</div>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.5rem" }}>
-                  <div>
-                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.25rem" }}>
-                      <span style={{ background: "#007AFF", color: "#fff", borderRadius: "6px", padding: "0.2rem 0.5rem", fontSize: "0.75rem", fontWeight: 700 }}>Orden {ultimaOrden.numero_ficha}</span>
-                      <span style={{ color: "#1d1d1f", fontWeight: 600 }}>{ultimaOrden.nombre_cliente || "Sin nombre"}</span>
+            {/* Última orden + Últimas tienda en grid */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1.5rem" }}>
+
+              {/* Última orden online */}
+              {ultimaOrden && (
+                <div style={{ background: "#fff", borderRadius: "16px", padding: "1.25rem 1.5rem", boxShadow: "0 2px 12px rgba(0,0,0,0.04)" }}>
+                  <div style={{ fontSize: "0.72rem", fontWeight: 600, color: "#6e6e73", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.75rem" }}>Última orden online</div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "0.5rem" }}>
+                    <div>
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.25rem" }}>
+                        <span style={{ background: "#007AFF", color: "#fff", borderRadius: "6px", padding: "0.2rem 0.5rem", fontSize: "0.75rem", fontWeight: 700 }}>{ultimaOrden.numero_ficha}</span>
+                      </div>
+                      <div style={{ color: "#1d1d1f", fontWeight: 600, fontSize: "0.88rem" }}>{ultimaOrden.nombre_cliente || "Sin nombre"}</div>
+                      <div style={{ color: "#6e6e73", fontSize: "0.78rem", marginTop: "0.15rem" }}>{ultimaOrden.articulos?.slice(0, 50)}{ultimaOrden.articulos?.length > 50 ? "…" : ""}</div>
                     </div>
-                    <div style={{ color: "#6e6e73", fontSize: "0.82rem" }}>{ultimaOrden.articulos?.slice(0, 60)}{ultimaOrden.articulos?.length > 60 ? "…" : ""}</div>
-                  </div>
-                  <div style={{ textAlign: "right" }}>
-                    <div style={{ fontSize: "1.3rem", fontWeight: 700, color: "#1d1d1f", letterSpacing: "-0.02em" }}>{ultimaOrden.total_pagar}</div>
-                    <div style={{ color: "#6e6e73", fontSize: "0.78rem" }}>{ultimaOrden.quien_ingresa}</div>
+                    <div style={{ textAlign: "right", flexShrink: 0 }}>
+                      <div style={{ fontSize: "1.1rem", fontWeight: 700, color: "#1d1d1f" }}>{ultimaOrden.total_pagar}</div>
+                      <div style={{ color: "#6e6e73", fontSize: "0.75rem" }}>{ultimaOrden.quien_ingresa}</div>
+                    </div>
                   </div>
                 </div>
+              )}
+
+              {/* Últimas ventas de tienda */}
+              <div style={{ background: "#fff", borderRadius: "16px", padding: "1.25rem 1.5rem", boxShadow: "0 2px 12px rgba(0,0,0,0.04)" }}>
+                <div style={{ fontSize: "0.72rem", fontWeight: 600, color: "#6e6e73", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.75rem" }}>Últimas ventas en tienda</div>
+                {tienda.length === 0 ? (
+                  <div style={{ color: "#6e6e73", fontSize: "0.85rem" }}>Sin ventas hoy</div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+                    {tienda.slice(0, 3).map((v, i) => (
+                      <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.35rem 0", borderBottom: i < Math.min(tienda.length, 3) - 1 ? "1px solid #f5f5f7" : "none" }}>
+                        <div>
+                          <span style={{ background: "rgba(88,86,214,0.1)", color: "#5856D6", borderRadius: "6px", padding: "0.15rem 0.4rem", fontSize: "0.68rem", fontWeight: 700, marginRight: "0.4rem" }}>{v.numero_ficha}</span>
+                          <span style={{ color: "#1d1d1f", fontSize: "0.82rem" }}>{v.articulos?.slice(0, 30)}{v.articulos?.length > 30 ? "…" : ""}</span>
+                        </div>
+                        <span style={{ fontWeight: 700, color: "#5856D6", fontSize: "0.88rem", flexShrink: 0, marginLeft: "0.5rem" }}>{v.total_pagar}</span>
+                      </div>
+                    ))}
+                    {tienda.length > 3 && (
+                      <div style={{ color: "#6e6e73", fontSize: "0.75rem", marginTop: "0.25rem" }}>+{tienda.length - 3} más hoy</div>
+                    )}
+                  </div>
+                )}
               </div>
-            )}
+            </div>
 
             {/* Resumen por vendedor hoy */}
             <div style={{ background: "#fff", borderRadius: "16px", padding: "1.25rem 1.5rem", boxShadow: "0 2px 12px rgba(0,0,0,0.04)" }}>
@@ -1093,6 +1182,7 @@ function Dashboard({ user }) {
     </div>
   );
 }
+
 
 // ══ DashboardContador ══════════════════════════════════════════
 function DashboardContador({ user }) {
@@ -1271,6 +1361,7 @@ function AdminOrdenes({ rolUsuario }) {
   const [tab, setTab] = useState("todos");
   const [busqueda, setBusqueda] = useState("");
   const [rangoFecha, setRangoFecha] = useState("dia");
+  const [filtroPendientes, setFiltroPendientes] = useState(false);
 
   const esAdminCompleto = rolUsuario === "admin";
 
@@ -1318,6 +1409,16 @@ function AdminOrdenes({ rolUsuario }) {
     });
   }
 
+  async function aprobarOrden(id, tipo) {
+    const tabla = tipo === "local" ? "ordenes_locales" : "ordenes_departamentales";
+    await fetch(SUPABASE_URL + "/rest/v1/" + tabla + "?id=eq." + id, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
+      body: JSON.stringify({ estado_flujo: "aprobada" }),
+    });
+    cargarOrdenes();
+  }
+
   function exportarExcel() {
     const datos = todosF.map(o => ({
       "Ficha": o.numero_ficha,
@@ -1333,8 +1434,8 @@ function AdminOrdenes({ rolUsuario }) {
       "Perfil": o.perfil_salio_1 || o.perfil_salio,
       "Vendedor": o.quien_ingresa,
       "Estado": o.estado,
+      "Estado flujo": o.estado_flujo,
     }));
-
     const ws = XLSX.utils.json_to_sheet(datos);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Órdenes");
@@ -1345,6 +1446,7 @@ function AdminOrdenes({ rolUsuario }) {
     return lista.filter(o => {
       if (filtroVendedor && o.quien_ingresa !== filtroVendedor) return false;
       if (filtroPerfil && (o.perfil_salio_1 || o.perfil_salio) !== filtroPerfil) return false;
+      if (filtroPendientes && o.estado_flujo !== "pendiente_aprobacion") return false;
       if (busqueda) {
         const b = busqueda.toLowerCase();
         return (
@@ -1360,6 +1462,8 @@ function AdminOrdenes({ rolUsuario }) {
   const lF = filtrar(locales);
   const dF = filtrar(deptos);
   const todosF = [...lF, ...dF].sort((a, b) => new Date(b.creado_en) - new Date(a.creado_en));
+
+  const pendientesCount = [...locales, ...deptos].filter(o => o.estado_flujo === "pendiente_aprobacion" || !o.estado_flujo).length;
 
   const totalL = lF.filter(o => o.estado !== "cancelada").reduce((s, o) => s + parseMonto(o.total_pagar) - (o.costo_envio || 0), 0);
   const totalD = dF.filter(o => o.estado !== "cancelada").reduce((s, o) => s + parseMonto(o.total_pagar) - ENVIO_DEPTO, 0);
@@ -1382,16 +1486,25 @@ function AdminOrdenes({ rolUsuario }) {
     <div style={{ maxWidth: 1200, margin: "0 auto", padding: "2rem 1.5rem" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
         <h2 style={{ fontSize: "1.5rem", fontWeight: 700, color: "#1d1d1f", margin: 0, letterSpacing: "-0.02em" }}>Órdenes</h2>
+        {/* Badge de pendientes */}
+        {pendientesCount > 0 && (
+          <button onClick={() => setFiltroPendientes(!filtroPendientes)} style={{
+            display: "flex", alignItems: "center", gap: "0.5rem",
+            background: filtroPendientes ? "#FF9500" : "rgba(255,149,0,0.1)",
+            color: filtroPendientes ? "#fff" : "#FF9500",
+            border: "none", borderRadius: "10px", padding: "0.5rem 0.85rem",
+            fontWeight: 600, fontSize: "0.85rem", cursor: "pointer",
+            fontFamily: "'Inter', sans-serif",
+          }}>
+            <Clock size={15} />
+            {pendientesCount} pendiente{pendientesCount !== 1 ? "s" : ""} de aprobar
+          </button>
+        )}
       </div>
 
       {/* Filtros */}
       <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", marginBottom: "1.25rem" }}>
-        <input
-          type="date"
-          value={filtroFecha}
-          onChange={e => setFiltroFecha(e.target.value)}
-          style={selectStyle}
-        />
+        <input type="date" value={filtroFecha} onChange={e => setFiltroFecha(e.target.value)} style={selectStyle} />
         <button onClick={() => setRangoFecha(rangoFecha === "dia" ? "todo" : "dia")} style={{
           padding: "0.5rem 0.85rem", border: "1px solid #e5e5ea", borderRadius: "10px",
           fontSize: "0.85rem", background: rangoFecha === "todo" ? "#007AFF" : "#fff",
@@ -1400,7 +1513,6 @@ function AdminOrdenes({ rolUsuario }) {
         }}>
           {rangoFecha === "todo" ? "Hasta hoy" : "Solo hoy"}
         </button>
-
         {esAdminCompleto && (
           <button onClick={exportarExcel} style={{
             padding: "0.5rem 0.85rem", background: "#34C759", color: "#fff",
@@ -1411,7 +1523,6 @@ function AdminOrdenes({ rolUsuario }) {
             <Download size={15} /> Exportar Excel
           </button>
         )}
-
         <select value={filtroVendedor} onChange={e => setFiltroVendedor(e.target.value)} style={selectStyle}>
           <option value="">Todos los vendedores</option>
           {vendedores.map(v => <option key={v} value={v}>{v}</option>)}
@@ -1445,20 +1556,22 @@ function AdminOrdenes({ rolUsuario }) {
         {loading
           ? <div style={{ padding: "3rem", textAlign: "center", color: "#6e6e73" }}>Cargando...</div>
           : tab === "todos"
-          ? <TablaOrdenes ordenes={todosF} tipo="local" onUpdateEnvio={actualizarEnvio} esAdmin={esAdminCompleto} rolUsuario={rolUsuario} onSave={cargarOrdenes} />
+          ? <TablaOrdenes ordenes={todosF} tipo="local" onUpdateEnvio={actualizarEnvio} esAdmin={esAdminCompleto} rolUsuario={rolUsuario} onSave={cargarOrdenes} onAprobar={aprobarOrden} />
           : tab === "locales"
-          ? <TablaOrdenes ordenes={lF} tipo="local" onUpdateEnvio={actualizarEnvio} esAdmin={esAdminCompleto} rolUsuario={rolUsuario} onSave={cargarOrdenes} />
-          : <TablaOrdenes ordenes={dF} tipo="departamental" esAdmin={esAdminCompleto} rolUsuario={rolUsuario} onSave={cargarOrdenes} />
+          ? <TablaOrdenes ordenes={lF} tipo="local" onUpdateEnvio={actualizarEnvio} esAdmin={esAdminCompleto} rolUsuario={rolUsuario} onSave={cargarOrdenes} onAprobar={aprobarOrden} />
+          : <TablaOrdenes ordenes={dF} tipo="departamental" esAdmin={esAdminCompleto} rolUsuario={rolUsuario} onSave={cargarOrdenes} onAprobar={aprobarOrden} />
         }
       </div>
     </div>
   );
 }
 
+
 // ══ AdminEstadisticas ═════════════════════════════════════
 function AdminEstadisticas() {
   const [locales, setLocales] = useState([]);
   const [deptos, setDeptos] = useState([]);
+  const [tienda, setTienda] = useState([]);
   const [loading, setLoading] = useState(true);
   const [rango, setRango] = useState("semana");
 
@@ -1470,26 +1583,32 @@ function AdminEstadisticas() {
     const desde = new Date();
     desde.setDate(desde.getDate() - dias);
     const desdeStr = desde.toISOString().split("T")[0];
-    const [resL, resD] = await Promise.all([
+    const [resL, resD, resT] = await Promise.all([
       fetch(SUPABASE_URL + "/rest/v1/ordenes_locales?fecha_orden=gte." + desdeStr + "&order=fecha_orden.asc", { headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY } }),
       fetch(SUPABASE_URL + "/rest/v1/ordenes_departamentales?fecha_orden=gte." + desdeStr + "&order=fecha_orden.asc", { headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY } }),
+      fetch(SUPABASE_URL + "/rest/v1/ordenes_tienda?fecha_orden=gte." + desdeStr + "&order=fecha_orden.asc", { headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY } }),
     ]);
     setLocales(await resL.json());
     setDeptos(await resD.json());
+    setTienda(await resT.json());
     setLoading(false);
   }
 
   const todas = [...locales, ...deptos].filter(o => o.estado !== "cancelada");
 
-  // Ventas por día
+  // Ventas por día — incluye tienda
   const ventasPorDia = {};
   locales.filter(o => o.estado !== "cancelada").forEach(o => {
-    if (!ventasPorDia[o.fecha_orden]) ventasPorDia[o.fecha_orden] = { fecha: o.fecha_orden, locales: 0, deptos: 0 };
+    if (!ventasPorDia[o.fecha_orden]) ventasPorDia[o.fecha_orden] = { fecha: o.fecha_orden, locales: 0, deptos: 0, tienda: 0 };
     ventasPorDia[o.fecha_orden].locales += parseMonto(o.total_pagar) - (o.costo_envio || 0);
   });
   deptos.filter(o => o.estado !== "cancelada").forEach(o => {
-    if (!ventasPorDia[o.fecha_orden]) ventasPorDia[o.fecha_orden] = { fecha: o.fecha_orden, locales: 0, deptos: 0 };
+    if (!ventasPorDia[o.fecha_orden]) ventasPorDia[o.fecha_orden] = { fecha: o.fecha_orden, locales: 0, deptos: 0, tienda: 0 };
     ventasPorDia[o.fecha_orden].deptos += parseMonto(o.total_pagar) - ENVIO_DEPTO;
+  });
+  tienda.forEach(o => {
+    if (!ventasPorDia[o.fecha_orden]) ventasPorDia[o.fecha_orden] = { fecha: o.fecha_orden, locales: 0, deptos: 0, tienda: 0 };
+    ventasPorDia[o.fecha_orden].tienda += parseMonto(o.total_pagar);
   });
   const chartData = Object.values(ventasPorDia).sort((a, b) => a.fecha.localeCompare(b.fecha));
 
@@ -1501,9 +1620,9 @@ function AdminEstadisticas() {
   });
   const pieData = Object.entries(porPerfil).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
 
-  // Por forma de pago
+  // Por forma de pago (incluye tienda)
   const porPago = {};
-  todas.forEach(o => {
+  [...todas, ...tienda].forEach(o => {
     const p = o.forma_pago || "Sin forma";
     porPago[p] = (porPago[p] || 0) + 1;
   });
@@ -1520,7 +1639,7 @@ function AdminEstadisticas() {
   });
   const vendedoresData = Object.values(porVendedor).sort((a, b) => b.total - a.total).slice(0, 6);
 
-  // Top municipios/departamentos
+  // Top ubicaciones
   const porUbicacion = {};
   todas.forEach(o => {
     const ub = o.departamento || o.municipio || "Sin ubicación";
@@ -1530,6 +1649,7 @@ function AdminEstadisticas() {
 
   const totalL = locales.filter(o => o.estado !== "cancelada").reduce((s, o) => s + parseMonto(o.total_pagar) - (o.costo_envio || 0), 0);
   const totalD = deptos.filter(o => o.estado !== "cancelada").reduce((s, o) => s + parseMonto(o.total_pagar) - ENVIO_DEPTO, 0);
+  const totalT = tienda.reduce((s, o) => s + parseMonto(o.total_pagar), 0);
   const canceladas = [...locales, ...deptos].filter(o => o.estado === "cancelada").length;
 
   const btnStyle = (active) => ({
@@ -1557,11 +1677,12 @@ function AdminEstadisticas() {
       </div>
 
       {/* Cards resumen */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "1rem", marginBottom: "1.5rem" }}>
-        <StatCard label="Total Locales" value={formatMoney(totalL)} />
-        <StatCard label="Total Deptos" value={formatMoney(totalD)} />
-        <StatCard label="Gran Total" value={formatMoney(totalL + totalD)} accent="#007AFF" />
-        <StatCard label="Órdenes" value={(locales.length + deptos.length - canceladas).toString()} />
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: "1rem", marginBottom: "1.5rem" }}>
+        <StatCard label="Locales" value={formatMoney(totalL)} />
+        <StatCard label="Deptos" value={formatMoney(totalD)} />
+        <StatCard label="Tienda" value={formatMoney(totalT)} accent="#5856D6" sub={tienda.length + " ventas"} />
+        <StatCard label="Gran Total" value={formatMoney(totalL + totalD + totalT)} accent="#007AFF" />
+        <StatCard label="Órdenes online" value={(locales.length + deptos.length - canceladas).toString()} />
         <StatCard label="Canceladas" value={canceladas.toString()} accent="#ff3b30" />
       </div>
 
@@ -1576,9 +1697,10 @@ function AdminEstadisticas() {
               <Tooltip formatter={v => formatMoney(v)} contentStyle={{ borderRadius: "10px", border: "none", boxShadow: "0 4px 16px rgba(0,0,0,0.1)" }} />
               <Bar dataKey="locales" name="Locales" fill="#007AFF" radius={[6, 6, 0, 0]} />
               <Bar dataKey="deptos" name="Deptos" fill="#34C759" radius={[6, 6, 0, 0]} />
+              <Bar dataKey="tienda" name="Tienda" fill="#5856D6" radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>,
-          "Ventas por día"
+          "Ventas por día (Online + Tienda)"
         )}
 
         {cardChart(
@@ -1644,14 +1766,16 @@ function AdminEstadisticas() {
               ))}
             </div>
           </>,
-          "Forma de pago"
+          "Forma de pago (Online + Tienda)"
         )}
       </div>
 
       {/* Fila 3: Top ubicaciones */}
       {cardChart(
         <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-          {ubicacionData.map((u, i) => (
+          {ubicacionData.length === 0 ? (
+            <div style={{ color: "#6e6e73", fontSize: "0.85rem" }}>Sin datos</div>
+          ) : ubicacionData.map((u, i) => (
             <div key={i} style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
               <div style={{ fontSize: "0.82rem", fontWeight: 600, color: "#1d1d1f", width: 160, flexShrink: 0 }}>{u.name}</div>
               <div style={{ flex: 1, background: "#f5f5f7", borderRadius: "6px", overflow: "hidden", height: 8 }}>
@@ -1672,13 +1796,14 @@ function AdminEstadisticas() {
 function PerfilVendedor({ vendedor, onClose }) {
   const [ordenes, setOrdenes] = useState([]);
   const [todos, setTodos] = useState([]);
+  const [historicosPagos, setHistoricosPagos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [rango, setRango] = useState("mes");
   const [tab, setTab] = useState("ordenes");
   const [pagando, setPagando] = useState(false);
-  const [pagado, setPagado] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [comisionPagada, setComisionPagada] = useState(false);
+  const [montoPagar, setMontoPagar] = useState("");
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
   useEffect(() => {
@@ -1710,12 +1835,13 @@ function PerfilVendedor({ vendedor, onClose }) {
     const inicioMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString().split("T")[0];
     const nombre = encodeURIComponent(vendedor);
 
-    const [resL, resD, resLTodo, resDTodo, resPago] = await Promise.all([
+    const [resL, resD, resLTodo, resDTodo, resPago, resHistorico] = await Promise.all([
       fetch(SUPABASE_URL + "/rest/v1/ordenes_locales?fecha_orden=gte." + desdeStr + "&quien_ingresa=eq." + nombre + "&order=creado_en.desc", { headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY } }),
       fetch(SUPABASE_URL + "/rest/v1/ordenes_departamentales?fecha_orden=gte." + desdeStr + "&quien_ingresa=eq." + nombre + "&order=creado_en.desc", { headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY } }),
       fetch(SUPABASE_URL + "/rest/v1/ordenes_locales?quien_ingresa=eq." + nombre, { headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY } }),
       fetch(SUPABASE_URL + "/rest/v1/ordenes_departamentales?quien_ingresa=eq." + nombre, { headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY } }),
       fetch(SUPABASE_URL + "/rest/v1/pagos_comisiones?vendedor=eq." + nombre + "&fecha_pago=gte." + inicioMes, { headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY } }),
+      fetch(SUPABASE_URL + "/rest/v1/pagos_comisiones?vendedor=eq." + nombre + "&order=creado_en.desc", { headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY } }),
     ]);
 
     const l = await resL.json();
@@ -1723,25 +1849,29 @@ function PerfilVendedor({ vendedor, onClose }) {
     const lTodo = await resLTodo.json();
     const dTodo = await resDTodo.json();
     const pagos = await resPago.json();
+    const historico = await resHistorico.json();
 
     setOrdenes([...l, ...d].sort((a, b) => new Date(b.creado_en) - new Date(a.creado_en)));
     setTodos([...lTodo, ...dTodo]);
+    setHistoricosPagos(historico);
     if (pagos.length > 0) setComisionPagada(true);
     setLoading(false);
   }
 
   async function registrarPago() {
+    const montoFinal = parseFloat(montoPagar) || comision;
+    if (montoFinal <= 0) return;
     setPagando(true);
     await fetch(SUPABASE_URL + "/rest/v1/pagos_comisiones", {
       method: "POST",
       headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
-      body: JSON.stringify({ vendedor: vendedor, monto: comision }),
+      body: JSON.stringify({ vendedor: vendedor, monto: montoFinal }),
     });
     setPagando(false);
-    setPagado(true);
     setComisionPagada(true);
     setShowConfirm(false);
-    setTimeout(() => setPagado(false), 3000);
+    setMontoPagar("");
+    cargarDatos();
   }
 
   const ordenesActivas = ordenes.filter(o => o.estado !== "cancelada");
@@ -1779,6 +1909,15 @@ function PerfilVendedor({ vendedor, onClose }) {
     fontFamily: "'Inter', sans-serif",
   });
 
+  const inputStyle = {
+    width: "100%", padding: "0.6rem 0.85rem",
+    border: "1px solid #e5e5ea", borderRadius: "8px",
+    fontSize: "0.95rem", outline: "none",
+    background: "#f5f5f7", color: "#1d1d1f",
+    fontFamily: "'Inter', sans-serif", boxSizing: "border-box",
+    textAlign: "center", fontWeight: 600,
+  };
+
   return (
     <div style={{
       position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
@@ -1787,6 +1926,17 @@ function PerfilVendedor({ vendedor, onClose }) {
       padding: "1.5rem", fontFamily: "'Inter', sans-serif",
       boxSizing: "border-box",
     }} onClick={onClose}>
+
+      {/* Botón X fuera del modal */}
+      <button onClick={onClose} style={{
+        position: "fixed", top: "1rem", right: "1rem",
+        background: "rgba(255,255,255,0.15)", backdropFilter: "blur(10px)",
+        border: "1px solid rgba(255,255,255,0.2)", borderRadius: "50%",
+        width: 40, height: 40, cursor: "pointer", color: "#fff",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        zIndex: 1001, fontSize: "1rem",
+      }}>✕</button>
+
       <div style={{
         background: "#f5f5f7", borderRadius: "20px",
         width: "100%", maxWidth: 920,
@@ -1808,8 +1958,6 @@ function PerfilVendedor({ vendedor, onClose }) {
           <div style={{ position: "absolute", width: 220, height: 220, borderRadius: "50%", background: "radial-gradient(circle, rgba(0,122,255,0.25) 0%, transparent 70%)", top: -100, right: -60, pointerEvents: "none" }} />
           <div style={{ position: "absolute", width: 160, height: 160, borderRadius: "50%", background: "radial-gradient(circle, rgba(52,199,89,0.15) 0%, transparent 70%)", bottom: -80, left: -40, pointerEvents: "none" }} />
 
-          <button onClick={onClose} style={{ position: "absolute", top: "1rem", right: "1rem", background: "rgba(255,255,255,0.1)", border: "none", borderRadius: "50%", width: 32, height: 32, cursor: "pointer", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2 }}>✕</button>
-
           <div style={{ position: "relative", zIndex: 1, flex: 1, display: "flex", flexDirection: "column" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "0.85rem", marginBottom: "1.5rem" }}>
               <div style={{ width: 48, height: 48, borderRadius: "50%", background: "#007AFF", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: "1.1rem", fontWeight: 700, flexShrink: 0 }}>
@@ -1821,11 +1969,11 @@ function PerfilVendedor({ vendedor, onClose }) {
               </div>
             </div>
 
-            {/* Cards de totales — apiladas verticalmente */}
+            {/* Cards de totales */}
             <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem", marginBottom: "1.25rem" }}>
               {[
                 { label: "Vendido este período", value: formatMoney(totalVendido) },
-                { label: "Comisión", value: formatMoney(comision), green: true },
+                { label: "Comisión pendiente", value: formatMoney(comision), green: true },
                 { label: "Histórico total", value: formatMoney(totalHistorico) },
               ].map((card, i) => (
                 <div key={i} style={{ background: "rgba(255,255,255,0.08)", borderRadius: "12px", padding: "0.85rem 1rem" }}>
@@ -1839,7 +1987,7 @@ function PerfilVendedor({ vendedor, onClose }) {
 
             {/* Botón pago */}
             <button
-              onClick={() => setShowConfirm(true)}
+              onClick={() => { setMontoPagar(comision.toFixed(2)); setShowConfirm(true); }}
               disabled={comisionPagada || comision === 0}
               style={{
                 width: "100%", padding: "0.8rem",
@@ -1848,11 +1996,9 @@ function PerfilVendedor({ vendedor, onClose }) {
                 border: "none", borderRadius: "12px",
                 fontWeight: 600, fontSize: "0.85rem",
                 cursor: comisionPagada || comision === 0 ? "default" : "pointer",
-                fontFamily: "'Inter', sans-serif",
-                transition: "all 0.2s",
+                fontFamily: "'Inter', sans-serif", transition: "all 0.2s",
                 display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem",
-                boxSizing: "border-box",
-                flexWrap: "wrap", textAlign: "center",
+                boxSizing: "border-box", flexWrap: "wrap", textAlign: "center",
               }}>
               {comisionPagada
                 ? <span style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}><CheckCircle size={16} /> Comisión pagada</span>
@@ -1862,7 +2008,7 @@ function PerfilVendedor({ vendedor, onClose }) {
           </div>
         </div>
 
-        {/* ══ Columna derecha: Órdenes / Gráfica ══ */}
+        {/* ══ Columna derecha ══ */}
         <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0, minWidth: 0 }}>
 
           {/* Controles */}
@@ -1870,6 +2016,7 @@ function PerfilVendedor({ vendedor, onClose }) {
             <div style={{ display: "flex", gap: "0.25rem" }}>
               <button onClick={() => setTab("ordenes")} style={tabStyle(tab === "ordenes")}>Órdenes</button>
               <button onClick={() => setTab("grafica")} style={tabStyle(tab === "grafica")}>Gráfica</button>
+              <button onClick={() => setTab("pagos")} style={tabStyle(tab === "pagos")}>Pagos</button>
             </div>
             <div style={{ display: "flex", gap: "0.35rem", background: "#f5f5f7", borderRadius: "10px", padding: "0.25rem" }}>
               {["semana", "mes", "año"].map(r => <button key={r} onClick={() => setRango(r)} style={btnStyle(rango === r)}>{r}</button>)}
@@ -1895,6 +2042,38 @@ function PerfilVendedor({ vendedor, onClose }) {
                       <Bar dataKey="total" name="Ventas" fill="#007AFF" radius={[6, 6, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
+                )}
+              </div>
+            ) : tab === "pagos" ? (
+              <div>
+                <div style={{ fontSize: "0.72rem", fontWeight: 600, color: "#6e6e73", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.75rem" }}>
+                  Historial de pagos de comisión
+                </div>
+                {historicosPagos.length === 0 ? (
+                  <div style={{ background: "#fff", borderRadius: "16px", padding: "2rem", textAlign: "center", color: "#6e6e73" }}>
+                    Sin pagos registrados
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
+                    {historicosPagos.map((p, i) => (
+                      <div key={i} style={{ background: "#fff", borderRadius: "12px", padding: "1rem 1.25rem", boxShadow: "0 2px 8px rgba(0,0,0,0.04)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <div>
+                          <div style={{ fontWeight: 600, color: "#1d1d1f", fontSize: "0.88rem" }}>Pago de comisión</div>
+                          <div style={{ color: "#6e6e73", fontSize: "0.75rem", marginTop: "0.15rem" }}>
+                            {new Date(p.creado_en).toLocaleDateString("es-SV", { day: "2-digit", month: "long", year: "numeric" })}
+                          </div>
+                        </div>
+                        <div style={{ textAlign: "right" }}>
+                          <div style={{ fontSize: "1.1rem", fontWeight: 700, color: "#34C759" }}>{formatMoney(p.monto)}</div>
+                          <span style={{ background: "rgba(52,199,89,0.1)", color: "#34C759", borderRadius: "6px", padding: "0.1rem 0.4rem", fontSize: "0.68rem", fontWeight: 600 }}>Pagado</span>
+                        </div>
+                      </div>
+                    ))}
+                    <div style={{ background: "#fff", borderRadius: "12px", padding: "0.85rem 1.25rem", display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "2px solid #f5f5f7" }}>
+                      <span style={{ fontWeight: 600, color: "#6e6e73", fontSize: "0.82rem" }}>Total pagado históricamente</span>
+                      <span style={{ fontWeight: 700, color: "#007AFF", fontSize: "1rem" }}>{formatMoney(historicosPagos.reduce((s, p) => s + p.monto, 0))}</span>
+                    </div>
+                  </div>
                 )}
               </div>
             ) : (
@@ -1931,7 +2110,7 @@ function PerfilVendedor({ vendedor, onClose }) {
         </div>
       </div>
 
-      {/* Modal confirmación pago */}
+      {/* Modal confirmación pago con monto editable */}
       {showConfirm && (
         <div style={{
           position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
@@ -1941,27 +2120,57 @@ function PerfilVendedor({ vendedor, onClose }) {
         }}>
           <div style={{
             background: "#fff", borderRadius: "20px", padding: "2rem",
-            maxWidth: 360, width: "100%", textAlign: "center",
+            maxWidth: 380, width: "100%",
             boxShadow: "0 20px 60px rgba(0,0,0,0.2)",
           }}>
-            <div style={{ fontSize: "2rem", marginBottom: "0.75rem" }}>💰</div>
-            <h3 style={{ fontSize: "1.1rem", fontWeight: 700, color: "#1d1d1f", margin: "0 0 0.5rem" }}>Confirmar pago</h3>
-            <p style={{ color: "#6e6e73", fontSize: "0.88rem", margin: "0 0 1.5rem" }}>
-              ¿Confirmas el pago de <strong style={{ color: "#34C759" }}>{formatMoney(comision)}</strong> a {vendedor.replace("(Vend)", "").trim()}?
-            </p>
+            <div style={{ textAlign: "center", marginBottom: "1.25rem" }}>
+              <div style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>💰</div>
+              <h3 style={{ fontSize: "1.1rem", fontWeight: 700, color: "#1d1d1f", margin: "0 0 0.25rem" }}>Confirmar pago</h3>
+              <p style={{ color: "#6e6e73", fontSize: "0.85rem", margin: 0 }}>
+                Pagando comisión a <strong>{vendedor.replace("(Vend)", "").trim()}</strong>
+              </p>
+            </div>
+
+            {/* Comisión total como referencia */}
+            <div style={{ background: "#f5f5f7", borderRadius: "10px", padding: "0.75rem 1rem", marginBottom: "1rem", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontSize: "0.82rem", color: "#6e6e73" }}>Comisión total calculada</span>
+              <span style={{ fontWeight: 700, color: "#1d1d1f" }}>{formatMoney(comision)}</span>
+            </div>
+
+            {/* Input monto a pagar */}
+            <div style={{ marginBottom: "1.5rem" }}>
+              <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 600, color: "#6e6e73", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "0.5rem" }}>
+                Monto a depositar
+              </label>
+              <input
+                type="text"
+                inputMode="decimal"
+                value={montoPagar}
+                onChange={e => setMontoPagar(e.target.value)}
+                placeholder="0.00"
+                style={inputStyle}
+              />
+              <p style={{ color: "#6e6e73", fontSize: "0.75rem", margin: "0.4rem 0 0", textAlign: "center" }}>
+                Puedes ajustar el monto si el vendedor no pide el total
+              </p>
+            </div>
+
             <div style={{ display: "flex", gap: "0.75rem" }}>
               <button onClick={() => setShowConfirm(false)} style={{
                 flex: 1, padding: "0.75rem", background: "#f5f5f7",
                 border: "none", borderRadius: "10px", fontWeight: 600,
                 cursor: "pointer", fontFamily: "'Inter', sans-serif", color: "#6e6e73",
               }}>Cancelar</button>
-              <button onClick={registrarPago} disabled={pagando} style={{
-                flex: 2, padding: "0.75rem", background: "#34C759",
+              <button onClick={registrarPago} disabled={pagando || !montoPagar || parseFloat(montoPagar) <= 0} style={{
+                flex: 2, padding: "0.75rem",
+                background: pagando || !montoPagar ? "#e5e5ea" : "#34C759",
+                color: pagando || !montoPagar ? "#6e6e73" : "#fff",
                 border: "none", borderRadius: "10px", fontWeight: 600,
-                cursor: "pointer", fontFamily: "'Inter', sans-serif", color: "#fff",
+                cursor: pagando || !montoPagar ? "default" : "pointer",
+                fontFamily: "'Inter', sans-serif", color: "#fff",
                 display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem",
               }}>
-                {pagando ? "Procesando..." : <span style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}><CheckCircle size={16} /> Confirmar pago</span>}
+                {pagando ? "Procesando..." : <span style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}><CheckCircle size={16} /> Confirmar {montoPagar ? formatMoney(parseFloat(montoPagar)) : ""}</span>}
               </button>
             </div>
           </div>
@@ -1970,7 +2179,6 @@ function PerfilVendedor({ vendedor, onClose }) {
     </div>
   );
 }
-
 
 
 // ══ AdminVendedores ═══════════════════════════════════════
@@ -2644,8 +2852,8 @@ function AdminEquipo() {
               <select value={form.rol} onChange={e => setForm(p => ({ ...p, rol: e.target.value }))} style={inputStyle}>
                <option value="vendedor">Vendedor</option>
                 <option value="admin">Admin</option>
-                 <option value="contador">Contador</option>
-                 <option value="logística">Logística</option>
+                 <option value="operaciones">Operaciones</option>
+                  <option value="repartidor">Repartidor</option>
               </select>
             </div>
 
@@ -2662,6 +2870,741 @@ function AdminEquipo() {
   );
 }
 
+// ══ Panel de Operaciones ══════════════════════════════════
+function OperacionesPanel({ user }) {
+  const [locales, setLocales] = useState([]);
+  const [deptos, setDeptos] = useState([]);
+  const [repartidores, setRepartidores] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [filtroFecha, setFiltroFecha] = useState(fechaHoy());
+  const [busqueda, setBusqueda] = useState("");
+  const [tab, setTab] = useState("todos");
+  const [ordenEditar, setOrdenEditar] = useState(null);
+  const [tipoEditar, setTipoEditar] = useState(null);
+  const [copiado, setCopiado] = useState(null);
+
+  useEffect(() => { cargarDatos(); }, [filtroFecha]);
+
+  async function cargarDatos() {
+    setLoading(true);
+    const [resL, resD, resR] = await Promise.all([
+      fetch(SUPABASE_URL + "/rest/v1/ordenes_locales?fecha_orden=eq." + filtroFecha + "&estado_flujo=neq.pendiente_aprobacion&order=creado_en.desc", {
+        headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
+      }),
+      fetch(SUPABASE_URL + "/rest/v1/ordenes_departamentales?fecha_orden=eq." + filtroFecha + "&estado_flujo=neq.pendiente_aprobacion&order=creado_en.desc", {
+        headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
+      }),
+      fetch(SUPABASE_URL + "/rest/v1/usuarios?rol=eq.repartidor&activo=eq.true", {
+        headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
+      }),
+    ]);
+    setLocales(await resL.json());
+    setDeptos(await resD.json());
+    setRepartidores(await resR.json());
+    setLoading(false);
+  }
+
+  async function cambiarEstadoFlujo(id, tipo, nuevoEstado) {
+    const tabla = tipo === "local" ? "ordenes_locales" : "ordenes_departamentales";
+    await fetch(SUPABASE_URL + "/rest/v1/" + tabla + "?id=eq." + id, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
+      body: JSON.stringify({ estado_flujo: nuevoEstado }),
+    });
+    cargarDatos();
+  }
+
+  async function asignarRepartidor(id, tipo, repartidor, monto) {
+    const tabla = tipo === "local" ? "ordenes_locales" : "ordenes_departamentales";
+    await fetch(SUPABASE_URL + "/rest/v1/" + tabla + "?id=eq." + id, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
+      body: JSON.stringify({ repartidor_asignado: repartidor, monto_repartidor: parseFloat(monto) || 0, estado_flujo: "asignada" }),
+    });
+    cargarDatos();
+  }
+
+  const todas = [...locales, ...deptos].sort((a, b) => new Date(b.creado_en) - new Date(a.creado_en));
+  const filtradas = todas.filter(o => {
+    if (!busqueda) return true;
+    const b = busqueda.toLowerCase();
+    return (o.numero_ficha && o.numero_ficha.toLowerCase().includes(b)) ||
+      (o.nombre_cliente && o.nombre_cliente.toLowerCase().includes(b));
+  });
+
+  const badgeEstado = (estado) => {
+    const config = {
+      aprobada: { bg: "rgba(0,122,255,0.1)", color: "#007AFF", label: "Aprobada" },
+      preparada: { bg: "rgba(255,149,0,0.1)", color: "#FF9500", label: "Preparada" },
+      asignada: { bg: "rgba(88,86,214,0.1)", color: "#5856D6", label: "Asignada" },
+      entregada: { bg: "rgba(52,199,89,0.1)", color: "#34C759", label: "Entregada" },
+      cancelada: { bg: "rgba(255,59,48,0.1)", color: "#ff3b30", label: "Cancelada" },
+    };
+    const c = config[estado] || { bg: "#f5f5f7", color: "#6e6e73", label: estado };
+    return <span style={{ background: c.bg, color: c.color, borderRadius: "6px", padding: "0.2rem 0.5rem", fontSize: "0.7rem", fontWeight: 600 }}>{c.label}</span>;
+  };
+
+  const tabStyle = (active) => ({
+    padding: "0.45rem 1rem", borderRadius: "8px", border: "none",
+    background: active ? "#007AFF" : "transparent",
+    color: active ? "#fff" : "#6e6e73",
+    fontWeight: active ? 600 : 400, fontSize: "0.85rem", cursor: "pointer",
+    fontFamily: "'Inter', sans-serif",
+  });
+
+  const selectStyle = {
+    padding: "0.5rem 0.85rem", border: "1px solid #e5e5ea", borderRadius: "10px",
+    fontSize: "0.85rem", background: "#fff", outline: "none", fontFamily: "'Inter', sans-serif",
+  };
+
+  return (
+    <div style={{ maxWidth: 1200, margin: "0 auto", padding: "2rem 1.5rem" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem", flexWrap: "wrap", gap: "0.75rem" }}>
+        <h2 style={{ fontSize: "1.5rem", fontWeight: 700, color: "#1d1d1f", margin: 0, letterSpacing: "-0.02em" }}>Operaciones</h2>
+        <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+          <input
+            placeholder="Buscar ficha o cliente..."
+            value={busqueda}
+            onChange={e => setBusqueda(e.target.value)}
+            style={selectStyle}
+          />
+          <input type="date" value={filtroFecha} onChange={e => setFiltroFecha(e.target.value)} style={selectStyle} />
+        </div>
+      </div>
+
+      {/* Stats rápidas */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "1rem", marginBottom: "1.5rem" }}>
+        {[
+          { label: "Aprobadas", value: todas.filter(o => o.estado_flujo === "aprobada").length, color: "#007AFF" },
+          { label: "Preparadas", value: todas.filter(o => o.estado_flujo === "preparada").length, color: "#FF9500" },
+          { label: "Asignadas", value: todas.filter(o => o.estado_flujo === "asignada").length, color: "#5856D6" },
+          { label: "Entregadas", value: todas.filter(o => o.estado_flujo === "entregada").length, color: "#34C759" },
+        ].map((s, i) => (
+          <div key={i} style={{ background: "#fff", borderRadius: "16px", padding: "1rem 1.25rem", boxShadow: "0 2px 12px rgba(0,0,0,0.04)" }}>
+            <div style={{ fontSize: "0.7rem", fontWeight: 600, color: "#6e6e73", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.35rem" }}>{s.label}</div>
+            <div style={{ fontSize: "1.75rem", fontWeight: 700, color: s.color, letterSpacing: "-0.02em" }}>{s.value}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Tabla */}
+      <div style={{ background: "#fff", borderRadius: "16px", boxShadow: "0 2px 12px rgba(0,0,0,0.04)", overflow: "hidden" }}>
+        <div style={{ display: "flex", gap: "0.25rem", padding: "0.75rem 1rem", borderBottom: "1px solid #f5f5f7" }}>
+          <button onClick={() => setTab("todos")} style={tabStyle(tab === "todos")}>Todos ({filtradas.length})</button>
+          <button onClick={() => setTab("locales")} style={tabStyle(tab === "locales")}>Locales ({locales.length})</button>
+          <button onClick={() => setTab("deptos")} style={tabStyle(tab === "deptos")}>Deptos ({deptos.length})</button>
+        </div>
+
+        {loading ? (
+          <div style={{ padding: "3rem", textAlign: "center", color: "#6e6e73" }}>Cargando...</div>
+        ) : (
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.83rem" }}>
+              <thead>
+                <tr style={{ borderBottom: "1px solid #f5f5f7" }}>
+                  {["Ficha", "Cliente", "Artículos", "Dirección", "Total", "Estado", "Repartidor", "Acciones"].map(h => (
+                    <th key={h} style={{ padding: "0.75rem 1rem", textAlign: "left", color: "#6e6e73", fontWeight: 600, fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "0.05em", whiteSpace: "nowrap" }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {(tab === "todos" ? filtradas : tab === "locales" ? locales : deptos).map((o, i) => {
+                  const tipo = o.departamento ? "departamental" : "local";
+                  return (
+                    <tr key={o.id} style={{ borderBottom: "1px solid #f5f5f7" }}>
+                      <td style={{ padding: "0.75rem 1rem", fontWeight: 700, color: "#007AFF", cursor: "pointer" }} onClick={() => { setOrdenEditar(o); setTipoEditar(tipo); }}>
+                        #{o.numero_ficha || "-"}
+                      </td>
+                      <td style={{ padding: "0.75rem 1rem", fontWeight: 500 }}>{o.nombre_cliente || "Sin nombre"}</td>
+                      <td style={{ padding: "0.75rem 1rem", color: "#6e6e73", maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{o.articulos}</td>
+                      <td style={{ padding: "0.75rem 1rem", color: "#6e6e73", maxWidth: 150, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{o.direccion_entrega || (o.departamento + " - " + o.municipio)}</td>
+                      <td style={{ padding: "0.75rem 1rem", fontWeight: 600 }}>{o.total_pagar}</td>
+                      <td style={{ padding: "0.75rem 1rem" }}>{badgeEstado(o.estado_flujo || "aprobada")}</td>
+                      <td style={{ padding: "0.75rem 1rem", color: "#6e6e73", fontSize: "0.8rem" }}>
+                        {o.repartidor_asignado || "—"}
+                        {o.monto_repartidor > 0 && <div style={{ color: "#FF9500", fontSize: "0.72rem" }}>${o.monto_repartidor}</div>}
+                      </td>
+                      <td style={{ padding: "0.75rem 1rem" }} onClick={e => e.stopPropagation()}>
+                        <AccionesOperaciones
+                          orden={o}
+                          tipo={tipo}
+                          repartidores={repartidores}
+                          onCambiarEstado={cambiarEstadoFlujo}
+                          onAsignar={asignarRepartidor}
+                          onCopiar={() => {
+                            const texto = "Orden " + o.numero_ficha +
+                              "\n👤 " + (o.nombre_cliente || "Sin nombre") +
+                              "\n📱 " + (o.numero_contacto || "-") +
+                              "\n📍 " + (o.municipio || o.departamento || "-") +
+                              "\n🏠 " + (o.direccion_entrega || "-") +
+                              "\n📦 " + o.articulos +
+                              "\n💰 " + o.total_pagar;
+                            navigator.clipboard.writeText(texto);
+                            setCopiado(o.id);
+                            setTimeout(() => setCopiado(null), 2000);
+                          }}
+                          copiado={copiado === o.id}
+                        />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {ordenEditar && (
+        <ModalEditar
+          orden={ordenEditar}
+          tipo={tipoEditar}
+          rolUsuario="operaciones"
+          onClose={() => setOrdenEditar(null)}
+          onSave={() => { setOrdenEditar(null); cargarDatos(); }}
+        />
+      )}
+    </div>
+  );
+}
+
+// ══ Acciones por orden en Operaciones ══════════════════════
+function AccionesOperaciones({ orden, tipo, repartidores, onCambiarEstado, onAsignar, onCopiar, copiado }) {
+  const [showAsignar, setShowAsignar] = useState(false);
+  const [repartidorSel, setRepartidorSel] = useState("");
+  const [montoRep, setMontoRep] = useState("");
+
+  const estado = orden.estado_flujo || "aprobada";
+
+  return (
+    <div style={{ display: "flex", gap: "0.35rem", alignItems: "center", flexWrap: "wrap" }}>
+      {estado === "aprobada" && (
+        <button onClick={() => onCambiarEstado(orden.id, tipo, "preparada")} style={{
+          padding: "0.3rem 0.6rem", background: "rgba(255,149,0,0.1)", color: "#FF9500",
+          border: "none", borderRadius: "6px", fontSize: "0.75rem", cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap",
+        }}>Preparar</button>
+      )}
+      {estado === "preparada" && (
+        <button onClick={() => setShowAsignar(true)} style={{
+          padding: "0.3rem 0.6rem", background: "rgba(88,86,214,0.1)", color: "#5856D6",
+          border: "none", borderRadius: "6px", fontSize: "0.75rem", cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap",
+        }}>Asignar</button>
+      )}
+      <button onClick={onCopiar} style={{
+        padding: "0.3rem", background: copiado ? "rgba(52,199,89,0.1)" : "#f5f5f7",
+        border: "none", borderRadius: "6px", cursor: "pointer",
+        color: copiado ? "#34C759" : "#6e6e73", display: "flex", alignItems: "center",
+      }}>
+        {copiado ? <Check size={14} /> : <Copy size={14} />}
+      </button>
+
+      {showAsignar && (
+        <div style={{
+          position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+          background: "rgba(0,0,0,0.4)", backdropFilter: "blur(4px)",
+          zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center",
+          padding: "1.5rem",
+        }} onClick={() => setShowAsignar(false)}>
+          <div style={{
+            background: "#fff", borderRadius: "20px", padding: "1.5rem",
+            maxWidth: 360, width: "100%",
+            boxShadow: "0 20px 60px rgba(0,0,0,0.2)",
+          }} onClick={e => e.stopPropagation()}>
+            <h3 style={{ fontSize: "1rem", fontWeight: 700, color: "#1d1d1f", margin: "0 0 1.25rem" }}>Asignar repartidor</h3>
+            <div style={{ marginBottom: "1rem" }}>
+              <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 600, color: "#6e6e73", marginBottom: "0.35rem", textTransform: "uppercase" }}>Repartidor</label>
+              <select value={repartidorSel} onChange={e => setRepartidorSel(e.target.value)} style={{
+                width: "100%", padding: "0.6rem 0.85rem", border: "1px solid #e5e5ea",
+                borderRadius: "8px", fontSize: "0.88rem", outline: "none", background: "#f5f5f7",
+              }}>
+                <option value="">Seleccionar...</option>
+                {repartidores.map(r => <option key={r.id} value={r.nombre}>{r.nombre}</option>)}
+              </select>
+            </div>
+            <div style={{ marginBottom: "1.25rem" }}>
+              <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 600, color: "#6e6e73", marginBottom: "0.35rem", textTransform: "uppercase" }}>Monto del repartidor ($)</label>
+              <input type="text" inputMode="decimal" value={montoRep} onChange={e => setMontoRep(e.target.value)} placeholder="0.00" style={{
+                width: "100%", padding: "0.6rem 0.85rem", border: "1px solid #e5e5ea",
+                borderRadius: "8px", fontSize: "0.88rem", outline: "none", background: "#f5f5f7",
+                boxSizing: "border-box",
+              }} />
+            </div>
+            <div style={{ display: "flex", gap: "0.75rem" }}>
+              <button onClick={() => setShowAsignar(false)} style={{
+                flex: 1, padding: "0.75rem", background: "#f5f5f7", color: "#6e6e73",
+                border: "none", borderRadius: "10px", fontWeight: 600, cursor: "pointer",
+              }}>Cancelar</button>
+              <button onClick={() => {
+                if (!repartidorSel) return;
+                onAsignar(orden.id, tipo, repartidorSel, montoRep);
+                setShowAsignar(false);
+              }} style={{
+                flex: 2, padding: "0.75rem", background: "#007AFF", color: "#fff",
+                border: "none", borderRadius: "10px", fontWeight: 600, cursor: "pointer",
+              }}>Asignar</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ══ Panel de Repartidor ════════════════════════════════════
+function RepartidorPanel({ user }) {
+  const [ordenes, setOrdenes] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [filtroFecha, setFiltroFecha] = useState(fechaHoy());
+
+  useEffect(() => { cargarMisEntregas(); }, [filtroFecha]);
+
+  async function cargarMisEntregas() {
+    setLoading(true);
+    const nombre = encodeURIComponent(user.nombre);
+    const [resL, resD] = await Promise.all([
+      fetch(SUPABASE_URL + "/rest/v1/ordenes_locales?fecha_orden=eq." + filtroFecha + "&repartidor_asignado=eq." + nombre + "&order=creado_en.desc", {
+        headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
+      }),
+      fetch(SUPABASE_URL + "/rest/v1/ordenes_departamentales?fecha_orden=eq." + filtroFecha + "&repartidor_asignado=eq." + nombre + "&order=creado_en.desc", {
+        headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
+      }),
+    ]);
+    const l = await resL.json();
+    const d = await resD.json();
+    setOrdenes([...l, ...d].sort((a, b) => new Date(b.creado_en) - new Date(a.creado_en)));
+    setLoading(false);
+  }
+
+  async function marcarEntregada(id, tipo) {
+    const tabla = tipo === "local" ? "ordenes_locales" : "ordenes_departamentales";
+    await fetch(SUPABASE_URL + "/rest/v1/" + tabla + "?id=eq." + id, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
+      body: JSON.stringify({ estado_flujo: "entregada" }),
+    });
+    cargarMisEntregas();
+  }
+
+  const pendientes = ordenes.filter(o => o.estado_flujo !== "entregada");
+  const entregadas = ordenes.filter(o => o.estado_flujo === "entregada");
+  const totalACobrar = ordenes.reduce((s, o) => s + (o.monto_repartidor || 0), 0);
+
+  const hora = new Date().getHours();
+  const saludo = hora < 12 ? "¡Buenos días" : hora < 18 ? "¡Buenas tardes" : "¡Buenas noches";
+
+  return (
+    <div style={{ minHeight: "100vh", background: "#f5f5f7", fontFamily: "'Inter', sans-serif" }}>
+      {/* Hero oscuro */}
+      <div style={{
+        background: "linear-gradient(135deg, #1c1c1e 0%, #2c2c2e 100%)",
+        padding: "2rem 1.5rem 3rem",
+        position: "relative", overflow: "hidden",
+        marginTop: "-52px", paddingTop: "calc(2rem + 52px)",
+      }}>
+        <div style={{ position: "absolute", width: 300, height: 300, borderRadius: "50%", background: "radial-gradient(circle, rgba(0,122,255,0.15) 0%, transparent 70%)", top: -100, right: -50, pointerEvents: "none" }} />
+
+        <div style={{ maxWidth: 560, margin: "0 auto", position: "relative" }}>
+          <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "0.85rem", margin: "0 0 0.25rem" }}>{saludo} 👋</p>
+          <h1 style={{ color: "#fff", fontSize: "1.5rem", fontWeight: 700, margin: "0 0 1.5rem", letterSpacing: "-0.02em" }}>
+            {user.nombre.replace("(Rep)", "").trim()}
+          </h1>
+
+          <div style={{
+            background: "rgba(255,255,255,0.08)", backdropFilter: "blur(20px)",
+            border: "1px solid rgba(255,255,255,0.12)", borderRadius: "20px", padding: "1.25rem",
+          }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.75rem" }}>
+              {[
+                { label: "Pendientes", value: pendientes.length.toString(), color: "#FF9500" },
+                { label: "Entregadas", value: entregadas.length.toString(), color: "#34C759" },
+                { label: "A cobrar", value: formatMoney(totalACobrar), color: "#007AFF" },
+              ].map((c, i) => (
+                <div key={i} style={{ textAlign: "center" }}>
+                  <div style={{ fontSize: "0.65rem", color: "rgba(255,255,255,0.45)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "0.25rem" }}>{c.label}</div>
+                  <div style={{ fontSize: "1.3rem", fontWeight: 700, color: c.color }}>{c.value}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Lista de entregas */}
+      <div style={{ maxWidth: 560, margin: "-1.5rem auto 0", padding: "0 1.5rem 3rem", position: "relative" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+          <h2 style={{ fontSize: "1rem", fontWeight: 600, color: "#1d1d1f", margin: 0 }}>Mis entregas</h2>
+          <input type="date" value={filtroFecha} onChange={e => setFiltroFecha(e.target.value)} style={{
+            padding: "0.4rem 0.75rem", border: "1px solid #e5e5ea", borderRadius: "10px",
+            fontSize: "0.82rem", background: "#fff", outline: "none",
+          }} />
+        </div>
+
+        {loading ? (
+          <div style={{ textAlign: "center", color: "#6e6e73", padding: "2rem" }}>Cargando...</div>
+        ) : ordenes.length === 0 ? (
+          <div style={{ background: "#fff", borderRadius: "16px", padding: "2rem", textAlign: "center", color: "#6e6e73" }}>
+            No tienes entregas asignadas para esta fecha
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+            {ordenes.map(o => {
+              const tipo = o.departamento ? "departamental" : "local";
+              const entregada = o.estado_flujo === "entregada";
+              return (
+                <div key={o.id} style={{
+                  background: "#fff", borderRadius: "16px", padding: "1rem 1.25rem",
+                  boxShadow: "0 2px 12px rgba(0,0,0,0.04)",
+                  borderLeft: entregada ? "3px solid #34C759" : "3px solid #FF9500",
+                  opacity: entregada ? 0.7 : 1,
+                }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "0.75rem" }}>
+                    <div>
+                      <span style={{ background: "rgba(0,122,255,0.1)", color: "#007AFF", borderRadius: "6px", padding: "0.15rem 0.4rem", fontSize: "0.68rem", fontWeight: 700 }}>
+                        {o.numero_ficha}
+                      </span>
+                      <div style={{ fontWeight: 600, color: "#1d1d1f", fontSize: "0.88rem", marginTop: "0.25rem" }}>{o.nombre_cliente || "Sin nombre"}</div>
+                      <div style={{ color: "#6e6e73", fontSize: "0.75rem" }}>📱 {o.numero_contacto || "-"}</div>
+                    </div>
+                    <div style={{ textAlign: "right" }}>
+                      <div style={{ fontWeight: 700, color: "#1d1d1f" }}>{o.total_pagar}</div>
+                      <div style={{ color: "#FF9500", fontSize: "0.75rem", fontWeight: 600 }}>Cobrar: ${o.monto_repartidor || 0}</div>
+                    </div>
+                  </div>
+
+                  <div style={{ background: "#f5f5f7", borderRadius: "8px", padding: "0.6rem 0.85rem", marginBottom: "0.75rem", fontSize: "0.8rem", color: "#6e6e73" }}>
+                    📍 {o.direccion_entrega || (o.departamento + " - " + o.municipio)}
+                  </div>
+
+                  <div style={{ fontSize: "0.78rem", color: "#6e6e73", marginBottom: "0.75rem" }}>
+                    📦 {o.articulos?.slice(0, 60)}{o.articulos?.length > 60 ? "…" : ""}
+                  </div>
+
+                  {!entregada ? (
+                    <button onClick={() => marcarEntregada(o.id, tipo)} style={{
+                      width: "100%", padding: "0.65rem",
+                      background: "#34C759", color: "#fff",
+                      border: "none", borderRadius: "10px", fontWeight: 600,
+                      fontSize: "0.85rem", cursor: "pointer",
+                      display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem",
+                    }}>
+                      <CheckCircle size={16} /> Marcar como entregada
+                    </button>
+                  ) : (
+                    <div style={{ textAlign: "center", color: "#34C759", fontSize: "0.82rem", fontWeight: 600 }}>
+                      ✅ Entregada
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ══ Panel de Cobros (Operaciones) ══════════════════════════
+function CobrosRepartidor() {
+  const [repartidores, setRepartidores] = useState([]);
+  const [ordenes, setOrdenes] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [filtroFecha, setFiltroFecha] = useState(fechaHoy());
+
+  useEffect(() => { cargarDatos(); }, [filtroFecha]);
+
+  async function cargarDatos() {
+    setLoading(true);
+    const [resR, resL, resD] = await Promise.all([
+      fetch(SUPABASE_URL + "/rest/v1/usuarios?rol=eq.repartidor&activo=eq.true", {
+        headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
+      }),
+      fetch(SUPABASE_URL + "/rest/v1/ordenes_locales?fecha_orden=eq." + filtroFecha + "&estado_flujo=eq.entregada", {
+        headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
+      }),
+      fetch(SUPABASE_URL + "/rest/v1/ordenes_departamentales?fecha_orden=eq." + filtroFecha + "&estado_flujo=eq.entregada", {
+        headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
+      }),
+    ]);
+    setRepartidores(await resR.json());
+    const l = await resL.json();
+    const d = await resD.json();
+    setOrdenes([...l, ...d]);
+    setLoading(false);
+  }
+
+  const porRepartidor = {};
+  ordenes.forEach(o => {
+    const r = o.repartidor_asignado || "Sin asignar";
+    if (!porRepartidor[r]) porRepartidor[r] = { entregas: 0, totalCobrado: 0, totalProductos: 0 };
+    porRepartidor[r].entregas++;
+    porRepartidor[r].totalCobrado += o.monto_repartidor || 0;
+    porRepartidor[r].totalProductos += parseMonto(o.total_pagar);
+  });
+
+  return (
+    <div style={{ maxWidth: 1200, margin: "0 auto", padding: "2rem 1.5rem" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
+        <h2 style={{ fontSize: "1.5rem", fontWeight: 700, color: "#1d1d1f", margin: 0, letterSpacing: "-0.02em" }}>Cobros por repartidor</h2>
+        <input type="date" value={filtroFecha} onChange={e => setFiltroFecha(e.target.value)} style={{
+          padding: "0.5rem 0.85rem", border: "1px solid #e5e5ea", borderRadius: "10px",
+          fontSize: "0.85rem", background: "#fff", outline: "none",
+        }} />
+      </div>
+
+      {loading ? (
+        <div style={{ textAlign: "center", color: "#6e6e73", padding: "3rem" }}>Cargando...</div>
+      ) : Object.keys(porRepartidor).length === 0 ? (
+        <div style={{ background: "#fff", borderRadius: "16px", padding: "3rem", textAlign: "center", color: "#6e6e73" }}>
+          No hay entregas completadas para esta fecha
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+          {Object.entries(porRepartidor).map(([nombre, data], i) => (
+            <div key={i} style={{ background: "#fff", borderRadius: "16px", padding: "1.25rem 1.5rem", boxShadow: "0 2px 12px rgba(0,0,0,0.04)" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                  <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#5856D6", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 700 }}>
+                    {nombre.charAt(0)}
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: 600, color: "#1d1d1f" }}>{nombre}</div>
+                    <div style={{ color: "#6e6e73", fontSize: "0.78rem" }}>{data.entregas} entrega{data.entregas !== 1 ? "s" : ""}</div>
+                  </div>
+                </div>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.75rem", paddingTop: "1rem", borderTop: "1px solid #f5f5f7" }}>
+                <div>
+                  <div style={{ fontSize: "0.7rem", color: "#6e6e73", textTransform: "uppercase", letterSpacing: "0.05em" }}>Total productos</div>
+                  <div style={{ fontSize: "1.1rem", fontWeight: 700, color: "#1d1d1f" }}>{formatMoney(data.totalProductos)}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: "0.7rem", color: "#6e6e73", textTransform: "uppercase", letterSpacing: "0.05em" }}>Se queda</div>
+                  <div style={{ fontSize: "1.1rem", fontWeight: 700, color: "#FF9500" }}>{formatMoney(data.totalCobrado)}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: "0.7rem", color: "#6e6e73", textTransform: "uppercase", letterSpacing: "0.05em" }}>Debe entregar</div>
+                  <div style={{ fontSize: "1.1rem", fontWeight: 700, color: "#34C759" }}>{formatMoney(data.totalProductos - data.totalCobrado)}</div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ══ Tienda (Ventas en punto de venta) ═════════════════════
+function AdminTienda({ user }) {
+  const [ventas, setVentas] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [filtroFecha, setFiltroFecha] = useState(fechaHoy());
+  const [showModal, setShowModal] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const QUIEN_INGRESA = ["Tecno Gadget - Fer", "Tecno Gadget - Jefferson", "Tecno Gadget - Wendy", "Tecno Gadget - Liss", "Tecno Gadget - Isa", "Tecno Gadget - Josue"];
+  const FORMAS_PAGO = ["Efectivo", "Transferencia", "Tarjeta", "Otro"];
+  const TIPOS_COMPROBANTE = ["Ticket", "Factura", "Factura Consumidor Final", "Sin comprobante"];
+
+  const initialForm = {
+    articulos: "", nombre_cliente: "", total_pagar: "",
+    forma_pago: "Efectivo", tipo_comprobante: "Ticket",
+    quien_ingresa: user.nombre, comentario_libre: "",
+  };
+  const [form, setForm] = useState(initialForm);
+
+  useEffect(() => { cargarVentas(); }, [filtroFecha]);
+
+  async function cargarVentas() {
+    setLoading(true);
+    const res = await fetch(SUPABASE_URL + "/rest/v1/ordenes_tienda?fecha_orden=eq." + filtroFecha + "&order=creado_en.desc", {
+      headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
+    });
+    setVentas(await res.json());
+    setLoading(false);
+  }
+
+  async function guardarVenta() {
+    if (!form.articulos || !form.total_pagar || !form.forma_pago || !form.tipo_comprobante || !form.quien_ingresa) return;
+    setSaving(true);
+
+    // Generar número de ficha VEN-YYMMDD-XXX
+    const resUltimo = await fetch(SUPABASE_URL + "/rest/v1/ordenes_tienda?select=numero_ficha&order=id.desc&limit=1", {
+      headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
+    });
+    const dataUltimo = await resUltimo.json();
+    let numero = 1;
+    if (dataUltimo.length > 0 && dataUltimo[0].numero_ficha) {
+      const partes = dataUltimo[0].numero_ficha.split("-");
+      numero = (parseInt(partes[partes.length - 1]) || 0) + 1;
+    }
+    const d = new Date();
+    const fecha = String(d.getFullYear()).slice(2) + String(d.getMonth() + 1).padStart(2, "0") + String(d.getDate()).padStart(2, "0");
+    const numeroFicha = "VEN-" + fecha + "-" + String(numero).padStart(3, "0");
+
+    await fetch(SUPABASE_URL + "/rest/v1/ordenes_tienda", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
+      body: JSON.stringify({ ...form, numero_ficha: numeroFicha, fecha_orden: filtroFecha }),
+    });
+
+    setSaving(false);
+    setShowModal(false);
+    setForm(initialForm);
+    cargarVentas();
+  }
+
+  const totalDia = ventas.reduce((s, v) => s + parseMonto(v.total_pagar), 0);
+
+  const inputStyle = {
+    width: "100%", padding: "0.6rem 0.85rem", border: "1px solid #e5e5ea",
+    borderRadius: "8px", fontSize: "0.88rem", outline: "none",
+    background: "#f5f5f7", color: "#1d1d1f", fontFamily: "'Inter', sans-serif", boxSizing: "border-box",
+  };
+
+  const labelStyle = {
+    display: "block", fontSize: "0.72rem", fontWeight: 600, color: "#6e6e73",
+    textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "0.35rem",
+  };
+
+  return (
+    <div style={{ maxWidth: 1200, margin: "0 auto", padding: "2rem 1.5rem" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
+        <h2 style={{ fontSize: "1.5rem", fontWeight: 700, color: "#1d1d1f", margin: 0, letterSpacing: "-0.02em" }}>Tienda</h2>
+        <div style={{ display: "flex", gap: "0.5rem" }}>
+          <input type="date" value={filtroFecha} onChange={e => setFiltroFecha(e.target.value)} style={{
+            padding: "0.5rem 0.85rem", border: "1px solid #e5e5ea", borderRadius: "10px",
+            fontSize: "0.85rem", background: "#fff", outline: "none",
+          }} />
+          <button onClick={() => setShowModal(true)} style={{
+            padding: "0.5rem 1rem", background: "#007AFF", color: "#fff",
+            border: "none", borderRadius: "10px", fontWeight: 600, fontSize: "0.85rem",
+            cursor: "pointer", display: "flex", alignItems: "center", gap: "0.35rem",
+          }}>
+            + Venta nueva
+          </button>
+        </div>
+      </div>
+
+      {/* Stats */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "1rem", marginBottom: "1.5rem" }}>
+        <StatCard label="Ventas hoy" value={ventas.length.toString()} />
+        <StatCard label="Total recaudado" value={formatMoney(totalDia)} accent="#007AFF" />
+      </div>
+
+      {/* Tabla de ventas */}
+      <div style={{ background: "#fff", borderRadius: "16px", boxShadow: "0 2px 12px rgba(0,0,0,0.04)", overflow: "hidden" }}>
+        {loading ? (
+          <div style={{ padding: "3rem", textAlign: "center", color: "#6e6e73" }}>Cargando...</div>
+        ) : ventas.length === 0 ? (
+          <div style={{ padding: "3rem", textAlign: "center", color: "#6e6e73" }}>No hay ventas para esta fecha</div>
+        ) : (
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.83rem" }}>
+            <thead>
+              <tr style={{ borderBottom: "1px solid #f5f5f7" }}>
+                {["Ficha", "Cliente", "Artículos", "Total", "Pago", "Quien registra"].map(h => (
+                  <th key={h} style={{ padding: "0.75rem 1rem", textAlign: "left", color: "#6e6e73", fontWeight: 600, fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {ventas.map((v, i) => (
+                <tr key={v.id} style={{ borderBottom: "1px solid #f5f5f7" }}>
+                  <td style={{ padding: "0.75rem 1rem", fontWeight: 700, color: "#007AFF" }}>#{v.numero_ficha}</td>
+                  <td style={{ padding: "0.75rem 1rem" }}>{v.nombre_cliente || "—"}</td>
+                  <td style={{ padding: "0.75rem 1rem", color: "#6e6e73", maxWidth: 150, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{v.articulos}</td>
+                  <td style={{ padding: "0.75rem 1rem", fontWeight: 600 }}>{v.total_pagar}</td>
+                  <td style={{ padding: "0.75rem 1rem", color: "#6e6e73" }}>{v.forma_pago}</td>
+                  <td style={{ padding: "0.75rem 1rem", color: "#6e6e73" }}>{v.quien_ingresa}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {/* Modal nueva venta */}
+      {showModal && (
+        <div style={{
+          position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+          background: "rgba(0,0,0,0.4)", backdropFilter: "blur(4px)",
+          zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center",
+          padding: "1.5rem",
+        }} onClick={() => setShowModal(false)}>
+          <div style={{
+            background: "#fff", borderRadius: "20px", padding: "1.5rem",
+            width: "100%", maxWidth: 480, maxHeight: "85vh",
+            boxShadow: "0 20px 60px rgba(0,0,0,0.2)",
+            display: "flex", flexDirection: "column",
+          }} onClick={e => e.stopPropagation()}>
+
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem", flexShrink: 0 }}>
+              <h2 style={{ fontSize: "1.1rem", fontWeight: 700, color: "#1d1d1f", margin: 0 }}>Nueva venta en tienda</h2>
+              <button onClick={() => setShowModal(false)} style={{ background: "#f5f5f7", border: "none", borderRadius: "50%", width: 32, height: 32, cursor: "pointer", color: "#6e6e73", display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
+            </div>
+
+            <div style={{ flex: 1, overflowY: "auto" }}>
+              <div style={{ marginBottom: "1rem" }}>
+                <label style={labelStyle}>Artículos *</label>
+                <textarea value={form.articulos} onChange={e => setForm(p => ({ ...p, articulos: e.target.value }))} style={{ ...inputStyle, resize: "vertical", minHeight: 72 }} placeholder="Describe los artículos vendidos" />
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 1rem" }}>
+                <div style={{ marginBottom: "1rem" }}>
+                  <label style={labelStyle}>Total *</label>
+                  <input value={form.total_pagar} onChange={e => setForm(p => ({ ...p, total_pagar: e.target.value }))} style={inputStyle} placeholder="$0.00" />
+                </div>
+                <div style={{ marginBottom: "1rem" }}>
+                  <label style={labelStyle}>Cliente (opcional)</label>
+                  <input value={form.nombre_cliente} onChange={e => setForm(p => ({ ...p, nombre_cliente: e.target.value }))} style={inputStyle} placeholder="Nombre del cliente" />
+                </div>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 1rem" }}>
+                <div style={{ marginBottom: "1rem" }}>
+                  <label style={labelStyle}>Forma de pago *</label>
+                  <select value={form.forma_pago} onChange={e => setForm(p => ({ ...p, forma_pago: e.target.value }))} style={inputStyle}>
+                    {FORMAS_PAGO.map(f => <option key={f} value={f}>{f}</option>)}
+                  </select>
+                </div>
+                <div style={{ marginBottom: "1rem" }}>
+                  <label style={labelStyle}>Comprobante *</label>
+                  <select value={form.tipo_comprobante} onChange={e => setForm(p => ({ ...p, tipo_comprobante: e.target.value }))} style={inputStyle}>
+                    {TIPOS_COMPROBANTE.map(t => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div style={{ marginBottom: "1rem" }}>
+                <label style={labelStyle}>Quién registra *</label>
+                <select value={form.quien_ingresa} onChange={e => setForm(p => ({ ...p, quien_ingresa: e.target.value }))} style={inputStyle}>
+                  {QUIEN_INGRESA.map(q => <option key={q} value={q}>{q}</option>)}
+                </select>
+              </div>
+              <div style={{ marginBottom: "1rem" }}>
+                <label style={labelStyle}>Comentario (opcional)</label>
+                <textarea value={form.comentario_libre} onChange={e => setForm(p => ({ ...p, comentario_libre: e.target.value }))} style={{ ...inputStyle, resize: "vertical", minHeight: 56 }} />
+              </div>
+            </div>
+
+            <div style={{ display: "flex", gap: "0.75rem", paddingTop: "1rem", borderTop: "1px solid #f5f5f7", flexShrink: 0 }}>
+              <button onClick={() => setShowModal(false)} style={{
+                flex: 1, padding: "0.75rem", background: "#f5f5f7", color: "#6e6e73",
+                border: "none", borderRadius: "10px", fontWeight: 600, cursor: "pointer",
+              }}>Cancelar</button>
+              <button onClick={guardarVenta} disabled={saving} style={{
+                flex: 2, padding: "0.75rem",
+                background: saving ? "#e5e5ea" : "#007AFF",
+                color: saving ? "#6e6e73" : "#fff",
+                border: "none", borderRadius: "10px", fontWeight: 600, cursor: saving ? "default" : "pointer",
+              }}>
+                {saving ? "Guardando..." : "Registrar venta"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 
 // ══ App ═════════════════════════════════════════════════
@@ -2671,12 +3614,14 @@ export default function App() {
     return saved ? JSON.parse(saved) : null;
   });
   const [activeTab, setActiveTab] = useState("");
-  const [busquedaGlobal, setBusquedaGlobal] = useState("");
 
   function handleLogin(u) {
-  setUser(u);
-  localStorage.setItem("panel_user", JSON.stringify(u));
-  setActiveTab(u.rol === "admin" || u.rol === "contador" ? "dashboard" : "mis-ordenes" || u.rol === "logistica" ? "ordenes" : "mis-ordenes");
+    setUser(u);
+    localStorage.setItem("panel_user", JSON.stringify(u));
+    if (u.rol === "admin") setActiveTab("dashboard");
+    else if (u.rol === "operaciones") setActiveTab("ordenes");
+    else if (u.rol === "repartidor") setActiveTab("mis-entregas");
+    else setActiveTab("mis-ordenes");
   }
 
   function handleLogout() {
@@ -2685,31 +3630,38 @@ export default function App() {
   }
 
   useEffect(() => {
-    if (user) setActiveTab(user.rol === "admin" ? "dashboard" : "mis-ordenes");
+    if (user) {
+      if (user.rol === "admin") setActiveTab("dashboard");
+      else if (user.rol === "operaciones") setActiveTab("ordenes");
+      else if (user.rol === "repartidor") setActiveTab("mis-entregas");
+      else setActiveTab("mis-ordenes");
+    }
   }, []);
 
   if (!user) return <Login onLogin={handleLogin} />;
 
   function renderContent() {
-  if (user.rol === "admin") {
-    if (activeTab === "dashboard") return <Dashboard user={user} />;
-    if (activeTab === "ordenes") return <AdminOrdenes />;
-    if (activeTab === "estadisticas") return <AdminEstadisticas />;
-    if (activeTab === "vendedores") return <AdminVendedores />;
-    if (activeTab === "equipo") return <AdminEquipo />;
-  } else if (user.rol === "contador") {
-    if (activeTab === "dashboard") return <DashboardContador user={user} />;
-    if (activeTab === "vendedores") return <AdminVendedores />;
-  } else if (user.rol === "logística") {
-    if (activeTab === "ordenes") return <AdminOrdenes rolUsuario="logística" />;
-  } else {
-    return <VendedorPanel user={user} />;
+    if (user.rol === "admin") {
+      if (activeTab === "dashboard") return <Dashboard user={user} />;
+      if (activeTab === "ordenes") return <AdminOrdenes rolUsuario="admin" />;
+      if (activeTab === "estadisticas") return <AdminEstadisticas />;
+      if (activeTab === "vendedores") return <AdminVendedores />;
+      if (activeTab === "equipo") return <AdminEquipo />;
+      if (activeTab === "tienda") return <AdminTienda user={user} />;
+    } else if (user.rol === "operaciones") {
+      if (activeTab === "ordenes") return <OperacionesPanel user={user} />;
+      if (activeTab === "tienda") return <AdminTienda user={user} />;
+      if (activeTab === "cobros") return <CobrosRepartidor />;
+    } else if (user.rol === "repartidor") {
+      return <RepartidorPanel user={user} />;
+    } else {
+      return <VendedorPanel user={user} />;
+    }
   }
-}
 
   return (
     <div style={{ minHeight: "100vh", background: "#f5f5f7", fontFamily: "'Inter', sans-serif" }}>
-      <Navbar user={user} onLogout={handleLogout} activeTab={activeTab} setActiveTab={setActiveTab} busqueda={busquedaGlobal} setBusqueda={setBusquedaGlobal} darkMode={user.rol === "vendedor"} />
+      <Navbar user={user} onLogout={handleLogout} activeTab={activeTab} setActiveTab={setActiveTab} darkMode={user.rol === "vendedor" || user.rol === "repartidor"} />
       {renderContent()}
     </div>
   );
