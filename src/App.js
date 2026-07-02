@@ -3221,7 +3221,7 @@ function RepartidorPanel({ user }) {
   const totalACobrar = ordenes.reduce((s, o) => s + (o.monto_repartidor || 0), 0);
 
   const hora = new Date().getHours();
-  const saludo = hora < 12 ? "¡Buenos días" : hora < 18 ? "¡Buenas tardes" : "¡Buenas noches";
+  const saludo = hora < 12 ? "¡Buenos días!" : hora < 18 ? "¡Buenas tardes!" : "¡Buenas noches!";
 
   return (
     <div style={{ minHeight: "100vh", background: "#f5f5f7", fontFamily: "'Inter', sans-serif" }}>
@@ -3267,7 +3267,7 @@ function RepartidorPanel({ user }) {
       </div>
 
       {/* Lista de entregas */}
-      <div style={{ maxWidth: 560, margin: "-1.5rem auto 0", padding: "0 1.5rem 3rem", position: "relative" }}>
+      <div style={{ maxWidth: 560, margin: "1.5rem auto 0", padding: "0 1.5rem 3rem", position: "relative" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
           <h2 style={{ fontSize: "1rem", fontWeight: 600, color: "#1d1d1f", margin: 0 }}>Mis entregas</h2>
           <input type="date" value={filtroFecha} onChange={e => setFiltroFecha(e.target.value)} style={{
@@ -3291,7 +3291,7 @@ function RepartidorPanel({ user }) {
                 <div key={o.id} style={{
                   background: "#fff", borderRadius: "16px", padding: "1rem 1.25rem",
                   boxShadow: "0 2px 12px rgba(0,0,0,0.04)",
-                  borderLeft: entregada ? "3px solid #34C759" : "3px solid #FF9500",
+                  
                   opacity: entregada ? 0.7 : 1,
                 }}>
                   {/* Header de la card */}
