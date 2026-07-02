@@ -6,7 +6,7 @@ import { useState, useEffect, useRef } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from "recharts";
 // eslint-disable-next-line no-unused-vars
 import { Home, ClipboardList, BarChart2, Users, UserCheck, Search, Menu, MessageCircle, Eye, EyeOff, Clock } from "lucide-react";
-import { Copy, XCircle, RefreshCw, Check, Pencil, UserX, Download, CheckCircle, Banknote, ShoppingBag, Truck } from "lucide-react";
+import { Copy, XCircle, RefreshCw, Check, Pencil, UserX, Download, CheckCircle, Banknote, ShoppingBag, Truck, Sun, Phone, MapPin, DollarSign } from "lucide-react";
 import * as XLSX from 'xlsx'
 
 const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL;
@@ -3206,10 +3206,13 @@ function RepartidorPanel({ user }) {
   const [loading, setLoading] = useState(true);
   const [filtroFecha, setFiltroFecha] = useState(fechaHoy());
 
-  useEffect(() => { cargarMisEntregas(); }, [filtroFecha]);
+  useEffect(() => {
+    cargarMisEntregas();
+    const interval = setInterval(cargarMisEntregas, 15000);
+    return () => clearInterval(interval);
+  }, [filtroFecha]);
 
   async function cargarMisEntregas() {
-    setLoading(true);
     const nombre = encodeURIComponent(user.nombre);
     const [resL, resD] = await Promise.all([
       fetch(SUPABASE_URL + "/rest/v1/ordenes_locales?fecha_orden=eq." + filtroFecha + "&repartidor_asignado=eq." + nombre + "&order=creado_en.desc", {
@@ -3254,27 +3257,33 @@ function RepartidorPanel({ user }) {
         <div style={{ position: "absolute", width: 300, height: 300, borderRadius: "50%", background: "radial-gradient(circle, rgba(0,122,255,0.15) 0%, transparent 70%)", top: -100, right: -50, pointerEvents: "none" }} />
 
         <div style={{ maxWidth: 560, margin: "0 auto", position: "relative" }}>
-          <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "0.85rem", margin: "0 0 0.25rem" }}>{saludo} 👋</p>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.25rem" }}>
+            <Sun size={14} color="rgba(255,255,255,0.5)" />
+            <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "0.85rem", margin: 0 }}>{saludo}</p>
+          </div>
           <h1 style={{ color: "#fff", fontSize: "1.5rem", fontWeight: 700, margin: "0 0 1.5rem", letterSpacing: "-0.02em" }}>
             {user.nombre.replace("(Rep)", "").trim()}
           </h1>
 
-          <div style={{
-            background: "rgba(255,255,255,0.08)", backdropFilter: "blur(20px)",
-            border: "1px solid rgba(255,255,255,0.12)", borderRadius: "20px", padding: "1.25rem",
-          }}>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.75rem" }}>
-              {[
-                { label: "Pendientes", value: pendientes.length.toString(), color: "#FF9500" },
-                { label: "Entregadas", value: entregadas.length.toString(), color: "#34C759" },
-                { label: "A cobrar", value: formatMoney(totalACobrar), color: "#007AFF" },
-              ].map((c, i) => (
-                <div key={i} style={{ textAlign: "center" }}>
-                  <div style={{ fontSize: "0.65rem", color: "rgba(255,255,255,0.45)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "0.25rem" }}>{c.label}</div>
-                  <div style={{ fontSize: "1.3rem", fontWeight: 700, color: c.color }}>{c.value}</div>
-                </div>
-              ))}
-            </div>
+          {/* Cards de stats — horizontales sin overflow */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.6rem" }}>
+            {[
+              { label: "Pendientes", value: pendientes.length.toString(), color: "#FF9500", icon: <Clock size={14} color="#FF9500" /> },
+              { label: "Entregadas", value: entregadas.length.toString(), color: "#34C759", icon: <CheckCircle size={14} color="#34C759" /> },
+              { label: "A cobrar", value: formatMoney(totalACobrar), color: "#007AFF", icon: <DollarSign size={14} color="#007AFF" /> },
+            ].map((c, i) => (
+              <div key={i} style={{
+                background: "rgba(255,255,255,0.08)",
+                backdropFilter: "blur(10px)",
+                border: "1px solid rgba(255,255,255,0.1)",
+                borderRadius: "14px", padding: "0.85rem 0.75rem",
+                textAlign: "center",
+              }}>
+                <div style={{ display: "flex", justifyContent: "center", marginBottom: "0.35rem" }}>{c.icon}</div>
+                <div style={{ fontSize: "0.6rem", color: "rgba(255,255,255,0.45)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "0.2rem" }}>{c.label}</div>
+                <div style={{ fontSize: "1.1rem", fontWeight: 700, color: c.color, letterSpacing: "-0.01em" }}>{c.value}</div>
+              </div>
+            ))}
           </div>
         </div>
       </div>
@@ -3307,31 +3316,42 @@ function RepartidorPanel({ user }) {
                   borderLeft: entregada ? "3px solid #34C759" : "3px solid #FF9500",
                   opacity: entregada ? 0.7 : 1,
                 }}>
+                  {/* Header de la card */}
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "0.75rem" }}>
                     <div>
                       <span style={{ background: "rgba(0,122,255,0.1)", color: "#007AFF", borderRadius: "6px", padding: "0.15rem 0.4rem", fontSize: "0.68rem", fontWeight: 700 }}>
                         {o.numero_ficha}
                       </span>
                       <div style={{ fontWeight: 600, color: "#1d1d1f", fontSize: "0.88rem", marginTop: "0.25rem" }}>{o.nombre_cliente || "Sin nombre"}</div>
-                      <div style={{ color: "#6e6e73", fontSize: "0.75rem" }}>📱 {o.numero_contacto || "-"}</div>
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.3rem", color: "#6e6e73", fontSize: "0.75rem", marginTop: "0.15rem" }}>
+                        <Phone size={11} />
+                        {o.numero_contacto || "Sin número"}
+                      </div>
                     </div>
                     <div style={{ textAlign: "right" }}>
                       <div style={{ fontWeight: 700, color: "#1d1d1f" }}>{o.total_pagar}</div>
-                      <div style={{ color: "#FF9500", fontSize: "0.75rem", fontWeight: 600 }}>Cobrar: ${o.monto_repartidor || 0}</div>
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.3rem", color: "#FF9500", fontSize: "0.75rem", fontWeight: 600, justifyContent: "flex-end", marginTop: "0.15rem" }}>
+                        <DollarSign size={11} />
+                        Cobrar: ${o.monto_repartidor || 0}
+                      </div>
                     </div>
                   </div>
 
-                  <div style={{ background: "#f5f5f7", borderRadius: "8px", padding: "0.6rem 0.85rem", marginBottom: "0.75rem", fontSize: "0.8rem", color: "#6e6e73" }}>
-                    📍 {o.direccion_entrega || (o.departamento + " - " + o.municipio)}
+                  {/* Dirección */}
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: "0.5rem", background: "#f5f5f7", borderRadius: "8px", padding: "0.6rem 0.85rem", marginBottom: "0.6rem" }}>
+                    <MapPin size={13} color="#6e6e73" style={{ flexShrink: 0, marginTop: "0.1rem" }} />
+                    <span style={{ fontSize: "0.8rem", color: "#6e6e73" }}>{o.direccion_entrega || (o.departamento + " - " + o.municipio)}</span>
                   </div>
 
-                  <div style={{ fontSize: "0.78rem", color: "#6e6e73", marginBottom: "0.75rem" }}>
-                    📦 {o.articulos?.slice(0, 60)}{o.articulos?.length > 60 ? "…" : ""}
+                  {/* Artículos */}
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: "0.5rem", marginBottom: "0.75rem" }}>
+                    <Package size={13} color="#6e6e73" style={{ flexShrink: 0, marginTop: "0.1rem" }} />
+                    <span style={{ fontSize: "0.78rem", color: "#6e6e73" }}>{o.articulos?.slice(0, 60)}{o.articulos?.length > 60 ? "…" : ""}</span>
                   </div>
 
                   {!entregada ? (
                     <button onClick={() => marcarEntregada(o.id, tipo)} style={{
-                      width: "100%", padding: "0.65rem",
+                      width: "100%", padding: "0.7rem",
                       background: "#34C759", color: "#fff",
                       border: "none", borderRadius: "10px", fontWeight: 600,
                       fontSize: "0.85rem", cursor: "pointer",
@@ -3340,8 +3360,8 @@ function RepartidorPanel({ user }) {
                       <CheckCircle size={16} /> Marcar como entregada
                     </button>
                   ) : (
-                    <div style={{ textAlign: "center", color: "#34C759", fontSize: "0.82rem", fontWeight: 600 }}>
-                      ✅ Entregada
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "0.4rem", color: "#34C759", fontSize: "0.82rem", fontWeight: 600 }}>
+                      <CheckCircle size={15} /> Entregada
                     </div>
                   )}
                 </div>
@@ -3353,6 +3373,7 @@ function RepartidorPanel({ user }) {
     </div>
   );
 }
+
 
 // ══ Panel de Cobros (Operaciones) ══════════════════════════
 function CobrosRepartidor() {
