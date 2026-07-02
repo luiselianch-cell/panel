@@ -2882,6 +2882,13 @@ function OperacionesPanel({ user }) {
   const [ordenEditar, setOrdenEditar] = useState(null);
   const [tipoEditar, setTipoEditar] = useState(null);
   const [copiado, setCopiado] = useState(null);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+  useEffect(() => {
+    function handleResize() { setIsMobile(window.innerWidth < 768); }
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   useEffect(() => {
     cargarDatos();
@@ -2927,7 +2934,6 @@ function OperacionesPanel({ user }) {
     cargarDatos();
   }
 
-
   const todas = [...locales, ...deptos].sort((a, b) => new Date(b.creado_en) - new Date(a.creado_en));
   const filtradas = todas.filter(o => {
     if (!busqueda) return true;
@@ -2963,6 +2969,138 @@ function OperacionesPanel({ user }) {
 
   const listaActual = tab === "todos" ? filtradas : tab === "locales" ? locales : deptos;
 
+  // ══ Vista Móvil ══
+  if (isMobile) {
+    return (
+      <div style={{ background: "#f5f5f7", minHeight: "100vh", fontFamily: "'Inter', sans-serif" }}>
+
+        {/* Header móvil */}
+        <div style={{ background: "#fff", padding: "1rem", borderBottom: "1px solid #f5f5f7", position: "sticky", top: 52, zIndex: 50 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <span style={{ fontSize: "1rem", fontWeight: 700, color: "#1d1d1f" }}>Operaciones</span>
+              <span style={{ background: "rgba(52,199,89,0.1)", color: "#34C759", borderRadius: "6px", padding: "0.15rem 0.4rem", fontSize: "0.65rem", fontWeight: 600 }}>↻ 10s</span>
+            </div>
+            <input type="date" value={filtroFecha} onChange={e => setFiltroFecha(e.target.value)}
+              style={{ padding: "0.35rem 0.6rem", border: "1px solid #e5e5ea", borderRadius: "8px", fontSize: "0.8rem", background: "#fff", outline: "none" }} />
+          </div>
+
+          {/* Búsqueda */}
+          <input placeholder="Buscar ficha o cliente..." value={busqueda} onChange={e => setBusqueda(e.target.value)}
+            style={{ width: "100%", padding: "0.6rem 0.85rem", border: "1px solid #e5e5ea", borderRadius: "10px", fontSize: "0.85rem", background: "#f5f5f7", outline: "none", boxSizing: "border-box" }} />
+        </div>
+
+        {/* Stats compactas */}
+        <div style={{ padding: "0.75rem 1rem", overflowX: "auto" }}>
+          <div style={{ display: "flex", gap: "0.5rem", minWidth: "max-content" }}>
+            {[
+              { label: "Aprob.", value: todas.filter(o => o.estado_flujo === "aprobada").length, color: "#007AFF" },
+              { label: "Prep.", value: todas.filter(o => o.estado_flujo === "preparada").length, color: "#FF9500" },
+              { label: "Asig.", value: todas.filter(o => o.estado_flujo === "asignada").length, color: "#5856D6" },
+              { label: "Entregadas", value: todas.filter(o => o.estado_flujo === "entregada").length, color: "#34C759" },
+              { label: "Canceladas", value: todas.filter(o => o.estado_flujo === "cancelada").length, color: "#ff3b30" },
+            ].map((s, i) => (
+              <div key={i} style={{ background: "#fff", borderRadius: "12px", padding: "0.6rem 0.85rem", boxShadow: "0 2px 8px rgba(0,0,0,0.04)", textAlign: "center", minWidth: 70 }}>
+                <div style={{ fontSize: "0.6rem", fontWeight: 600, color: "#6e6e73", textTransform: "uppercase", marginBottom: "0.2rem" }}>{s.label}</div>
+                <div style={{ fontSize: "1.3rem", fontWeight: 700, color: s.color }}>{s.value}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div style={{ padding: "0 1rem", display: "flex", gap: "0.25rem", marginBottom: "0.5rem" }}>
+          {[["todos", `Todos (${filtradas.length})`], ["locales", `Loc. (${locales.length})`], ["deptos", `Dep. (${deptos.length})`]].map(([val, label]) => (
+            <button key={val} onClick={() => setTab(val)} style={{
+              ...tabStyle(tab === val),
+              fontSize: "0.78rem", padding: "0.35rem 0.75rem",
+            }}>{label}</button>
+          ))}
+        </div>
+
+        {/* Cards móvil */}
+        <div style={{ padding: "0 1rem 2rem", display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+          {loading ? (
+            <div style={{ textAlign: "center", color: "#6e6e73", padding: "2rem" }}>Cargando...</div>
+          ) : listaActual.length === 0 ? (
+            <div style={{ background: "#fff", borderRadius: "16px", padding: "2rem", textAlign: "center", color: "#6e6e73" }}>No hay órdenes</div>
+          ) : listaActual.map((o) => {
+            const tipo = o.departamento ? "departamental" : "local";
+            return (
+              <div key={o.id} style={{ background: "#fff", borderRadius: "16px", padding: "1rem", boxShadow: "0 2px 12px rgba(0,0,0,0.04)" }}>
+
+                {/* Fila superior */}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "0.6rem" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", flexWrap: "wrap" }}>
+                    <span style={{ background: "rgba(0,122,255,0.1)", color: "#007AFF", borderRadius: "6px", padding: "0.15rem 0.4rem", fontSize: "0.7rem", fontWeight: 700 }}>
+                      #{o.numero_ficha || "-"}
+                    </span>
+                    {badgeEstado(o.estado_flujo || "aprobada")}
+                  </div>
+                  <span style={{ fontWeight: 700, color: "#1d1d1f", fontSize: "0.95rem" }}>{o.total_pagar}</span>
+                </div>
+
+                {/* Cliente */}
+                <div style={{ fontWeight: 600, color: "#1d1d1f", fontSize: "0.9rem", marginBottom: "0.25rem" }}>{o.nombre_cliente || "Sin nombre"}</div>
+
+                {/* Artículos */}
+                <div style={{ display: "flex", alignItems: "flex-start", gap: "0.4rem", marginBottom: "0.4rem" }}>
+                  <Package size={12} color="#6e6e73" style={{ flexShrink: 0, marginTop: "0.15rem" }} />
+                  <span style={{ fontSize: "0.78rem", color: "#6e6e73" }}>{o.articulos?.slice(0, 50)}{o.articulos?.length > 50 ? "…" : ""}</span>
+                </div>
+
+                {/* Dirección */}
+                <div style={{ display: "flex", alignItems: "flex-start", gap: "0.4rem", background: "#f5f5f7", borderRadius: "8px", padding: "0.5rem 0.75rem", marginBottom: "0.75rem" }}>
+                  <MapPin size={12} color="#6e6e73" style={{ flexShrink: 0, marginTop: "0.15rem" }} />
+                  <span style={{ fontSize: "0.78rem", color: "#6e6e73" }}>{o.direccion_entrega || (o.departamento + " - " + o.municipio)}</span>
+                </div>
+
+                {/* Repartidor asignado */}
+                {o.repartidor_asignado && (
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", marginBottom: "0.75rem" }}>
+                    <Truck size={12} color="#5856D6" />
+                    <span style={{ fontSize: "0.78rem", color: "#5856D6", fontWeight: 600 }}>{o.repartidor_asignado}</span>
+                    {o.monto_repartidor > 0 && <span style={{ fontSize: "0.72rem", color: "#FF9500" }}>— ${o.monto_repartidor}</span>}
+                  </div>
+                )}
+
+                {/* Acciones */}
+                <AccionesOperaciones
+                  orden={o}
+                  tipo={tipo}
+                  repartidores={repartidores}
+                  onCambiarEstado={cambiarEstadoFlujo}
+                  onAsignar={asignarRepartidor}
+                  onCopiar={() => {
+                    const texto = "Orden " + o.numero_ficha +
+                      "\n👤 " + (o.nombre_cliente || "Sin nombre") +
+                      "\n📱 " + (o.numero_contacto || "-") +
+                      "\n📍 " + (o.municipio || o.departamento || "-") +
+                      "\n🏠 " + (o.direccion_entrega || "-") +
+                      "\n📦 " + o.articulos +
+                      "\n💰 " + o.total_pagar;
+                    navigator.clipboard.writeText(texto);
+                    setCopiado(o.id);
+                    setTimeout(() => setCopiado(null), 2000);
+                  }}
+                  copiado={copiado === o.id}
+                  isMobile={true}
+                />
+              </div>
+            );
+          })}
+        </div>
+
+        {ordenEditar && (
+          <ModalEditar orden={ordenEditar} tipo={tipoEditar} rolUsuario="operaciones"
+            onClose={() => setOrdenEditar(null)}
+            onSave={() => { setOrdenEditar(null); cargarDatos(); }} />
+        )}
+      </div>
+    );
+  }
+
+  // ══ Vista Desktop ══
   return (
     <div style={{ maxWidth: 1200, margin: "0 auto", padding: "2rem 1.5rem" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem", flexWrap: "wrap", gap: "0.75rem" }}>
@@ -2976,7 +3114,6 @@ function OperacionesPanel({ user }) {
         </div>
       </div>
 
-      {/* Stats rápidas */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: "1rem", marginBottom: "1.5rem" }}>
         {[
           { label: "Aprobadas", value: todas.filter(o => o.estado_flujo === "aprobada").length, color: "#007AFF" },
@@ -2992,7 +3129,6 @@ function OperacionesPanel({ user }) {
         ))}
       </div>
 
-      {/* Tabla */}
       <div style={{ background: "#fff", borderRadius: "16px", boxShadow: "0 2px 12px rgba(0,0,0,0.04)", overflow: "hidden" }}>
         <div style={{ display: "flex", gap: "0.25rem", padding: "0.75rem 1rem", borderBottom: "1px solid #f5f5f7" }}>
           <button onClick={() => setTab("todos")} style={tabStyle(tab === "todos")}>Todos ({filtradas.length})</button>
@@ -3064,20 +3200,17 @@ function OperacionesPanel({ user }) {
       </div>
 
       {ordenEditar && (
-        <ModalEditar
-          orden={ordenEditar}
-          tipo={tipoEditar}
-          rolUsuario="operaciones"
+        <ModalEditar orden={ordenEditar} tipo={tipoEditar} rolUsuario="operaciones"
           onClose={() => setOrdenEditar(null)}
-          onSave={() => { setOrdenEditar(null); cargarDatos(); }}
-        />
+          onSave={() => { setOrdenEditar(null); cargarDatos(); }} />
       )}
     </div>
   );
 }
 
+
 // ══ Acciones por orden en Operaciones ══════════════════════
-function AccionesOperaciones({ orden, tipo, repartidores, onCambiarEstado, onAsignar, onCopiar, copiado }) {
+function AccionesOperaciones({ orden, tipo, repartidores, onCambiarEstado, onAsignar, onCopiar, copiado, isMobile }) {
   const [showAsignar, setShowAsignar] = useState(false);
   const [repartidorSel, setRepartidorSel] = useState("");
   const [montoRep, setMontoRep] = useState("");
@@ -3085,39 +3218,51 @@ function AccionesOperaciones({ orden, tipo, repartidores, onCambiarEstado, onAsi
   const estado = orden.estado_flujo || "aprobada";
 
   const btnBase = {
-    padding: "0.45rem 0.85rem", border: "none", borderRadius: "8px",
-    fontSize: "0.82rem", cursor: "pointer", fontWeight: 600,
-    whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: "0.35rem",
+    border: "none", borderRadius: "8px",
+    fontSize: isMobile ? "0.85rem" : "0.82rem",
+    cursor: "pointer", fontWeight: 600,
+    whiteSpace: "nowrap", display: "flex", alignItems: "center",
+    justifyContent: "center", gap: "0.35rem",
+    padding: isMobile ? "0.65rem 1rem" : "0.45rem 0.85rem",
+    flex: isMobile ? 1 : "none",
   };
 
   return (
-    <div style={{ display: "flex", gap: "0.4rem", alignItems: "center", flexWrap: "wrap" }}>
+    <div style={{ display: "flex", gap: "0.4rem", alignItems: "center", flexWrap: "wrap", width: isMobile ? "100%" : "auto" }}>
       {estado === "aprobada" && (
-        <button onClick={() => onCambiarEstado(orden.id, tipo, "preparada")} style={{ ...btnBase, background: "rgba(255,149,0,0.1)", color: "#FF9500" }}>
-          <Package size={14} /> Preparar
+        <button onClick={() => onCambiarEstado(orden.id, tipo, "preparada")}
+          style={{ ...btnBase, background: "rgba(255,149,0,0.1)", color: "#FF9500" }}>
+          <Package size={isMobile ? 15 : 14} /> Preparar
         </button>
       )}
       {estado === "preparada" && (
-        <button onClick={() => setShowAsignar(true)} style={{ ...btnBase, background: "rgba(88,86,214,0.1)", color: "#5856D6" }}>
-          <Truck size={14} /> Asignar
+        <button onClick={() => setShowAsignar(true)}
+          style={{ ...btnBase, background: "rgba(88,86,214,0.1)", color: "#5856D6" }}>
+          <Truck size={isMobile ? 15 : 14} /> Asignar
         </button>
       )}
       {(estado === "aprobada" || estado === "preparada" || estado === "asignada") && (
-        <button onClick={() => onCambiarEstado(orden.id, tipo, "cancelada")} style={{ ...btnBase, background: "rgba(255,59,48,0.1)", color: "#ff3b30" }}>
-          <XCircle size={14} /> Cancelar
+        <button onClick={() => onCambiarEstado(orden.id, tipo, "cancelada")}
+          style={{ ...btnBase, background: "rgba(255,59,48,0.1)", color: "#ff3b30" }}>
+          <XCircle size={isMobile ? 15 : 14} /> Cancelar
         </button>
       )}
       {estado === "cancelada" && (
-        <button onClick={() => onCambiarEstado(orden.id, tipo, "aprobada")} style={{ ...btnBase, background: "rgba(52,199,89,0.1)", color: "#34C759" }}>
-          <RefreshCw size={14} /> Reactivar
+        <button onClick={() => onCambiarEstado(orden.id, tipo, "aprobada")}
+          style={{ ...btnBase, background: "rgba(52,199,89,0.1)", color: "#34C759" }}>
+          <RefreshCw size={isMobile ? 15 : 14} /> Reactivar
         </button>
       )}
       <button onClick={onCopiar} style={{
-        padding: "0.45rem", background: copiado ? "rgba(52,199,89,0.1)" : "#f5f5f7",
+        padding: isMobile ? "0.65rem" : "0.45rem",
+        background: copiado ? "rgba(52,199,89,0.1)" : "#f5f5f7",
         border: "none", borderRadius: "8px", cursor: "pointer",
-        color: copiado ? "#34C759" : "#6e6e73", display: "flex", alignItems: "center",
+        color: copiado ? "#34C759" : "#6e6e73",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        flex: isMobile ? "none" : "none",
+        minWidth: isMobile ? 44 : "auto",
       }}>
-        {copiado ? <Check size={15} /> : <Copy size={15} />}
+        {copiado ? <Check size={isMobile ? 16 : 15} /> : <Copy size={isMobile ? 16 : 15} />}
       </button>
 
       {showAsignar && (
@@ -3129,18 +3274,28 @@ function AccionesOperaciones({ orden, tipo, repartidores, onCambiarEstado, onAsi
         }} onClick={() => setShowAsignar(false)}>
           <div style={{
             background: "#fff", borderRadius: "20px", padding: "1.5rem",
-            maxWidth: 360, width: "100%",
+            maxWidth: 380, width: "100%",
             boxShadow: "0 20px 60px rgba(0,0,0,0.2)",
           }} onClick={e => e.stopPropagation()}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
-              <h3 style={{ fontSize: "1rem", fontWeight: 700, color: "#1d1d1f", margin: 0 }}>Asignar repartidor</h3>
-              <button onClick={() => setShowAsignar(false)} style={{ background: "#f5f5f7", border: "none", borderRadius: "50%", width: 30, height: 30, cursor: "pointer", color: "#6e6e73", display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
+              <div>
+                <h3 style={{ fontSize: "1rem", fontWeight: 700, color: "#1d1d1f", margin: 0 }}>Asignar repartidor</h3>
+                <p style={{ fontSize: "0.78rem", color: "#6e6e73", margin: "0.2rem 0 0" }}>
+                  {orden.numero_ficha} — {orden.nombre_cliente || "Sin nombre"}
+                </p>
+              </div>
+              <button onClick={() => setShowAsignar(false)} style={{
+                background: "#f5f5f7", border: "none", borderRadius: "50%",
+                width: 32, height: 32, cursor: "pointer", color: "#6e6e73",
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}>✕</button>
             </div>
             <div style={{ marginBottom: "1rem" }}>
               <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 600, color: "#6e6e73", marginBottom: "0.35rem", textTransform: "uppercase" }}>Repartidor</label>
               <select value={repartidorSel} onChange={e => setRepartidorSel(e.target.value)} style={{
-                width: "100%", padding: "0.65rem 0.85rem", border: "1px solid #e5e5ea",
-                borderRadius: "8px", fontSize: "0.88rem", outline: "none", background: "#f5f5f7",
+                width: "100%", padding: "0.75rem 0.85rem", border: "1px solid #e5e5ea",
+                borderRadius: "10px", fontSize: "0.9rem", outline: "none", background: "#f5f5f7",
+                boxSizing: "border-box",
               }}>
                 <option value="">Seleccionar...</option>
                 {repartidores.map(r => <option key={r.id} value={r.nombre}>{r.nombre}</option>)}
@@ -3148,27 +3303,30 @@ function AccionesOperaciones({ orden, tipo, repartidores, onCambiarEstado, onAsi
             </div>
             <div style={{ marginBottom: "1.25rem" }}>
               <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 600, color: "#6e6e73", marginBottom: "0.35rem", textTransform: "uppercase" }}>Monto del repartidor ($)</label>
-              <input type="text" inputMode="decimal" value={montoRep} onChange={e => setMontoRep(e.target.value)} placeholder="0.00" style={{
-                width: "100%", padding: "0.65rem 0.85rem", border: "1px solid #e5e5ea",
-                borderRadius: "8px", fontSize: "0.88rem", outline: "none", background: "#f5f5f7",
-                boxSizing: "border-box",
-              }} />
+              <input type="text" inputMode="decimal" value={montoRep} onChange={e => setMontoRep(e.target.value)}
+                placeholder="0.00" style={{
+                  width: "100%", padding: "0.75rem 0.85rem", border: "1px solid #e5e5ea",
+                  borderRadius: "10px", fontSize: "0.9rem", outline: "none", background: "#f5f5f7",
+                  boxSizing: "border-box",
+                }} />
             </div>
             <div style={{ display: "flex", gap: "0.75rem" }}>
               <button onClick={() => setShowAsignar(false)} style={{
-                flex: 1, padding: "0.75rem", background: "#f5f5f7", color: "#6e6e73",
+                flex: 1, padding: "0.85rem", background: "#f5f5f7", color: "#6e6e73",
                 border: "none", borderRadius: "10px", fontWeight: 600, cursor: "pointer",
+                fontSize: "0.9rem",
               }}>Cancelar</button>
               <button onClick={() => {
                 if (!repartidorSel) return;
                 onAsignar(orden.id, tipo, repartidorSel, montoRep);
                 setShowAsignar(false);
               }} style={{
-                flex: 2, padding: "0.75rem", background: "#007AFF", color: "#fff",
+                flex: 2, padding: "0.85rem", background: "#007AFF", color: "#fff",
                 border: "none", borderRadius: "10px", fontWeight: 600, cursor: "pointer",
                 display: "flex", alignItems: "center", justifyContent: "center", gap: "0.4rem",
+                fontSize: "0.9rem",
               }}>
-                <Truck size={15} /> Asignar
+                <Truck size={16} /> Asignar repartidor
               </button>
             </div>
           </div>
