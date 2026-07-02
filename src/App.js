@@ -2883,10 +2883,13 @@ function OperacionesPanel({ user }) {
   const [tipoEditar, setTipoEditar] = useState(null);
   const [copiado, setCopiado] = useState(null);
 
-  useEffect(() => { cargarDatos(); }, [filtroFecha]);
+  useEffect(() => {
+    cargarDatos();
+    const interval = setInterval(cargarDatos, 10000);
+    return () => clearInterval(interval);
+  }, [filtroFecha]);
 
   async function cargarDatos() {
-    setLoading(true);
     const [resL, resD, resR] = await Promise.all([
       fetch(SUPABASE_URL + "/rest/v1/ordenes_locales?fecha_orden=eq." + filtroFecha + "&estado_flujo=neq.pendiente_aprobacion&order=creado_en.desc", {
         headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
@@ -2924,6 +2927,15 @@ function OperacionesPanel({ user }) {
     cargarDatos();
   }
 
+  async function actualizarEnvio(id, valor, tipo) {
+    const tabla = tipo === "local" ? "ordenes_locales" : "ordenes_departamentales";
+    await fetch(SUPABASE_URL + "/rest/v1/" + tabla + "?id=eq." + id, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
+      body: JSON.stringify({ costo_envio: parseFloat(valor) }),
+    });
+  }
+
   const todas = [...locales, ...deptos].sort((a, b) => new Date(b.creado_en) - new Date(a.creado_en));
   const filtradas = todas.filter(o => {
     if (!busqueda) return true;
@@ -2957,28 +2969,29 @@ function OperacionesPanel({ user }) {
     fontSize: "0.85rem", background: "#fff", outline: "none", fontFamily: "'Inter', sans-serif",
   };
 
+  const listaActual = tab === "todos" ? filtradas : tab === "locales" ? locales : deptos;
+
   return (
     <div style={{ maxWidth: 1200, margin: "0 auto", padding: "2rem 1.5rem" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem", flexWrap: "wrap", gap: "0.75rem" }}>
-        <h2 style={{ fontSize: "1.5rem", fontWeight: 700, color: "#1d1d1f", margin: 0, letterSpacing: "-0.02em" }}>Operaciones</h2>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+          <h2 style={{ fontSize: "1.5rem", fontWeight: 700, color: "#1d1d1f", margin: 0, letterSpacing: "-0.02em" }}>Operaciones</h2>
+          <span style={{ background: "rgba(52,199,89,0.1)", color: "#34C759", borderRadius: "6px", padding: "0.2rem 0.5rem", fontSize: "0.7rem", fontWeight: 600 }}>↻ 10s</span>
+        </div>
         <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-          <input
-            placeholder="Buscar ficha o cliente..."
-            value={busqueda}
-            onChange={e => setBusqueda(e.target.value)}
-            style={selectStyle}
-          />
+          <input placeholder="Buscar ficha o cliente..." value={busqueda} onChange={e => setBusqueda(e.target.value)} style={selectStyle} />
           <input type="date" value={filtroFecha} onChange={e => setFiltroFecha(e.target.value)} style={selectStyle} />
         </div>
       </div>
 
       {/* Stats rápidas */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "1rem", marginBottom: "1.5rem" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: "1rem", marginBottom: "1.5rem" }}>
         {[
           { label: "Aprobadas", value: todas.filter(o => o.estado_flujo === "aprobada").length, color: "#007AFF" },
           { label: "Preparadas", value: todas.filter(o => o.estado_flujo === "preparada").length, color: "#FF9500" },
           { label: "Asignadas", value: todas.filter(o => o.estado_flujo === "asignada").length, color: "#5856D6" },
           { label: "Entregadas", value: todas.filter(o => o.estado_flujo === "entregada").length, color: "#34C759" },
+          { label: "Canceladas", value: todas.filter(o => o.estado_flujo === "cancelada").length, color: "#ff3b30" },
         ].map((s, i) => (
           <div key={i} style={{ background: "#fff", borderRadius: "16px", padding: "1rem 1.25rem", boxShadow: "0 2px 12px rgba(0,0,0,0.04)" }}>
             <div style={{ fontSize: "0.7rem", fontWeight: 600, color: "#6e6e73", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.35rem" }}>{s.label}</div>
@@ -3002,13 +3015,16 @@ function OperacionesPanel({ user }) {
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.83rem" }}>
               <thead>
                 <tr style={{ borderBottom: "1px solid #f5f5f7" }}>
-                  {["Ficha", "Cliente", "Artículos", "Dirección", "Total", "Estado", "Repartidor", "Acciones"].map(h => (
+                  {["Ficha", "Cliente", "Artículos", "Dirección", "Total", "Envío", "Estado", "Repartidor", "Acciones"].map(h => (
                     <th key={h} style={{ padding: "0.75rem 1rem", textAlign: "left", color: "#6e6e73", fontWeight: 600, fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "0.05em", whiteSpace: "nowrap" }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {(tab === "todos" ? filtradas : tab === "locales" ? locales : deptos).map((o, i) => {
+                {listaActual.length === 0 && (
+                  <tr><td colSpan={9} style={{ padding: "3rem", textAlign: "center", color: "#6e6e73" }}>No hay órdenes</td></tr>
+                )}
+                {listaActual.map((o, i) => {
                   const tipo = o.departamento ? "departamental" : "local";
                   return (
                     <tr key={o.id} style={{ borderBottom: "1px solid #f5f5f7" }}>
@@ -3019,6 +3035,20 @@ function OperacionesPanel({ user }) {
                       <td style={{ padding: "0.75rem 1rem", color: "#6e6e73", maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{o.articulos}</td>
                       <td style={{ padding: "0.75rem 1rem", color: "#6e6e73", maxWidth: 150, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{o.direccion_entrega || (o.departamento + " - " + o.municipio)}</td>
                       <td style={{ padding: "0.75rem 1rem", fontWeight: 600 }}>{o.total_pagar}</td>
+                      <td style={{ padding: "0.75rem 1rem" }}>
+                        {tipo === "departamental" ? (
+                          <span style={{ color: "#ff3b30", fontSize: "0.82rem" }}>-${ENVIO_DEPTO}</span>
+                        ) : (
+                          <input
+                            type="text" inputMode="decimal"
+                            defaultValue={o.costo_envio || 0}
+                            onClick={e => e.stopPropagation()}
+                            onFocus={e => { e.stopPropagation(); e.target.style.border = "1.5px solid #007AFF"; }}
+                            onBlur={e => { e.target.style.border = "1.5px solid #e5e5ea"; actualizarEnvio(o.id, e.target.value, "local"); }}
+                            style={{ width: 65, padding: "0.3rem 0.5rem", border: "1.5px solid #e5e5ea", borderRadius: "8px", fontSize: "0.82rem", outline: "none", background: "#f5f5f7", textAlign: "center", fontFamily: "'Inter', sans-serif" }}
+                          />
+                        )}
+                      </td>
                       <td style={{ padding: "0.75rem 1rem" }}>{badgeEstado(o.estado_flujo || "aprobada")}</td>
                       <td style={{ padding: "0.75rem 1rem", color: "#6e6e73", fontSize: "0.8rem" }}>
                         {o.repartidor_asignado || "—"}
@@ -3076,26 +3106,40 @@ function AccionesOperaciones({ orden, tipo, repartidores, onCambiarEstado, onAsi
 
   const estado = orden.estado_flujo || "aprobada";
 
+  const btnBase = {
+    padding: "0.45rem 0.85rem", border: "none", borderRadius: "8px",
+    fontSize: "0.82rem", cursor: "pointer", fontWeight: 600,
+    whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: "0.35rem",
+  };
+
   return (
-    <div style={{ display: "flex", gap: "0.35rem", alignItems: "center", flexWrap: "wrap" }}>
+    <div style={{ display: "flex", gap: "0.4rem", alignItems: "center", flexWrap: "wrap" }}>
       {estado === "aprobada" && (
-        <button onClick={() => onCambiarEstado(orden.id, tipo, "preparada")} style={{
-          padding: "0.3rem 0.6rem", background: "rgba(255,149,0,0.1)", color: "#FF9500",
-          border: "none", borderRadius: "6px", fontSize: "0.75rem", cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap",
-        }}>Preparar</button>
+        <button onClick={() => onCambiarEstado(orden.id, tipo, "preparada")} style={{ ...btnBase, background: "rgba(255,149,0,0.1)", color: "#FF9500" }}>
+          <Package size={14} /> Preparar
+        </button>
       )}
       {estado === "preparada" && (
-        <button onClick={() => setShowAsignar(true)} style={{
-          padding: "0.3rem 0.6rem", background: "rgba(88,86,214,0.1)", color: "#5856D6",
-          border: "none", borderRadius: "6px", fontSize: "0.75rem", cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap",
-        }}>Asignar</button>
+        <button onClick={() => setShowAsignar(true)} style={{ ...btnBase, background: "rgba(88,86,214,0.1)", color: "#5856D6" }}>
+          <Truck size={14} /> Asignar
+        </button>
+      )}
+      {(estado === "aprobada" || estado === "preparada" || estado === "asignada") && (
+        <button onClick={() => onCambiarEstado(orden.id, tipo, "cancelada")} style={{ ...btnBase, background: "rgba(255,59,48,0.1)", color: "#ff3b30" }}>
+          <XCircle size={14} /> Cancelar
+        </button>
+      )}
+      {estado === "cancelada" && (
+        <button onClick={() => onCambiarEstado(orden.id, tipo, "aprobada")} style={{ ...btnBase, background: "rgba(52,199,89,0.1)", color: "#34C759" }}>
+          <RefreshCw size={14} /> Reactivar
+        </button>
       )}
       <button onClick={onCopiar} style={{
-        padding: "0.3rem", background: copiado ? "rgba(52,199,89,0.1)" : "#f5f5f7",
-        border: "none", borderRadius: "6px", cursor: "pointer",
+        padding: "0.45rem", background: copiado ? "rgba(52,199,89,0.1)" : "#f5f5f7",
+        border: "none", borderRadius: "8px", cursor: "pointer",
         color: copiado ? "#34C759" : "#6e6e73", display: "flex", alignItems: "center",
       }}>
-        {copiado ? <Check size={14} /> : <Copy size={14} />}
+        {copiado ? <Check size={15} /> : <Copy size={15} />}
       </button>
 
       {showAsignar && (
@@ -3110,11 +3154,14 @@ function AccionesOperaciones({ orden, tipo, repartidores, onCambiarEstado, onAsi
             maxWidth: 360, width: "100%",
             boxShadow: "0 20px 60px rgba(0,0,0,0.2)",
           }} onClick={e => e.stopPropagation()}>
-            <h3 style={{ fontSize: "1rem", fontWeight: 700, color: "#1d1d1f", margin: "0 0 1.25rem" }}>Asignar repartidor</h3>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
+              <h3 style={{ fontSize: "1rem", fontWeight: 700, color: "#1d1d1f", margin: 0 }}>Asignar repartidor</h3>
+              <button onClick={() => setShowAsignar(false)} style={{ background: "#f5f5f7", border: "none", borderRadius: "50%", width: 30, height: 30, cursor: "pointer", color: "#6e6e73", display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
+            </div>
             <div style={{ marginBottom: "1rem" }}>
               <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 600, color: "#6e6e73", marginBottom: "0.35rem", textTransform: "uppercase" }}>Repartidor</label>
               <select value={repartidorSel} onChange={e => setRepartidorSel(e.target.value)} style={{
-                width: "100%", padding: "0.6rem 0.85rem", border: "1px solid #e5e5ea",
+                width: "100%", padding: "0.65rem 0.85rem", border: "1px solid #e5e5ea",
                 borderRadius: "8px", fontSize: "0.88rem", outline: "none", background: "#f5f5f7",
               }}>
                 <option value="">Seleccionar...</option>
@@ -3124,7 +3171,7 @@ function AccionesOperaciones({ orden, tipo, repartidores, onCambiarEstado, onAsi
             <div style={{ marginBottom: "1.25rem" }}>
               <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 600, color: "#6e6e73", marginBottom: "0.35rem", textTransform: "uppercase" }}>Monto del repartidor ($)</label>
               <input type="text" inputMode="decimal" value={montoRep} onChange={e => setMontoRep(e.target.value)} placeholder="0.00" style={{
-                width: "100%", padding: "0.6rem 0.85rem", border: "1px solid #e5e5ea",
+                width: "100%", padding: "0.65rem 0.85rem", border: "1px solid #e5e5ea",
                 borderRadius: "8px", fontSize: "0.88rem", outline: "none", background: "#f5f5f7",
                 boxSizing: "border-box",
               }} />
@@ -3141,7 +3188,10 @@ function AccionesOperaciones({ orden, tipo, repartidores, onCambiarEstado, onAsi
               }} style={{
                 flex: 2, padding: "0.75rem", background: "#007AFF", color: "#fff",
                 border: "none", borderRadius: "10px", fontWeight: 600, cursor: "pointer",
-              }}>Asignar</button>
+                display: "flex", alignItems: "center", justifyContent: "center", gap: "0.4rem",
+              }}>
+                <Truck size={15} /> Asignar
+              </button>
             </div>
           </div>
         </div>
