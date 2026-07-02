@@ -5,7 +5,7 @@
 import { useState, useEffect, useRef } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from "recharts";
 // eslint-disable-next-line no-unused-vars
-import { Home, ClipboardList, BarChart2, Users, UserCheck, Search, Menu, MessageCircle, Eye, EyeOff, Clock } from "lucide-react";
+import { Home, ClipboardList, BarChart2, Users, UserCheck, Search, Menu, MessageCircle, Eye, EyeOff, Clock, Package } from "lucide-react";
 import { Copy, XCircle, RefreshCw, Check, Pencil, UserX, Download, CheckCircle, Banknote, ShoppingBag, Truck, Sun, Phone, MapPin, DollarSign } from "lucide-react";
 import * as XLSX from 'xlsx'
 
@@ -2927,14 +2927,6 @@ function OperacionesPanel({ user }) {
     cargarDatos();
   }
 
-  async function actualizarEnvio(id, valor, tipo) {
-    const tabla = tipo === "local" ? "ordenes_locales" : "ordenes_departamentales";
-    await fetch(SUPABASE_URL + "/rest/v1/" + tabla + "?id=eq." + id, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
-      body: JSON.stringify({ costo_envio: parseFloat(valor) }),
-    });
-  }
 
   const todas = [...locales, ...deptos].sort((a, b) => new Date(b.creado_en) - new Date(a.creado_en));
   const filtradas = todas.filter(o => {
@@ -3015,14 +3007,14 @@ function OperacionesPanel({ user }) {
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.83rem" }}>
               <thead>
                 <tr style={{ borderBottom: "1px solid #f5f5f7" }}>
-                  {["Ficha", "Cliente", "Artículos", "Dirección", "Total", "Envío", "Estado", "Repartidor", "Acciones"].map(h => (
+                  {["Ficha", "Cliente", "Artículos", "Dirección", "Total", "Estado", "Repartidor", "Acciones"].map(h => (
                     <th key={h} style={{ padding: "0.75rem 1rem", textAlign: "left", color: "#6e6e73", fontWeight: 600, fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "0.05em", whiteSpace: "nowrap" }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {listaActual.length === 0 && (
-                  <tr><td colSpan={9} style={{ padding: "3rem", textAlign: "center", color: "#6e6e73" }}>No hay órdenes</td></tr>
+                  <tr><td colSpan={8} style={{ padding: "3rem", textAlign: "center", color: "#6e6e73" }}>No hay órdenes</td></tr>
                 )}
                 {listaActual.map((o, i) => {
                   const tipo = o.departamento ? "departamental" : "local";
@@ -3035,20 +3027,6 @@ function OperacionesPanel({ user }) {
                       <td style={{ padding: "0.75rem 1rem", color: "#6e6e73", maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{o.articulos}</td>
                       <td style={{ padding: "0.75rem 1rem", color: "#6e6e73", maxWidth: 150, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{o.direccion_entrega || (o.departamento + " - " + o.municipio)}</td>
                       <td style={{ padding: "0.75rem 1rem", fontWeight: 600 }}>{o.total_pagar}</td>
-                      <td style={{ padding: "0.75rem 1rem" }}>
-                        {tipo === "departamental" ? (
-                          <span style={{ color: "#ff3b30", fontSize: "0.82rem" }}>-${ENVIO_DEPTO}</span>
-                        ) : (
-                          <input
-                            type="text" inputMode="decimal"
-                            defaultValue={o.costo_envio || 0}
-                            onClick={e => e.stopPropagation()}
-                            onFocus={e => { e.stopPropagation(); e.target.style.border = "1.5px solid #007AFF"; }}
-                            onBlur={e => { e.target.style.border = "1.5px solid #e5e5ea"; actualizarEnvio(o.id, e.target.value, "local"); }}
-                            style={{ width: 65, padding: "0.3rem 0.5rem", border: "1.5px solid #e5e5ea", borderRadius: "8px", fontSize: "0.82rem", outline: "none", background: "#f5f5f7", textAlign: "center", fontFamily: "'Inter', sans-serif" }}
-                          />
-                        )}
-                      </td>
                       <td style={{ padding: "0.75rem 1rem" }}>{badgeEstado(o.estado_flujo || "aprobada")}</td>
                       <td style={{ padding: "0.75rem 1rem", color: "#6e6e73", fontSize: "0.8rem" }}>
                         {o.repartidor_asignado || "—"}
