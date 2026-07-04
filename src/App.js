@@ -2251,7 +2251,7 @@ function AdminRepartidores() {
 
   const coloresPodio = ["#FFD700", "#C0C0C0", "#CD7F32"];
   const altosPodio = [80, 60, 45];
-  const medallas = ["🥇", "🥈", "🥉"];
+  
 
   const repartidoresFiltrados = repartidores
     .filter(r => r.nombre.toLowerCase().includes(busqueda.toLowerCase()));
@@ -2300,7 +2300,7 @@ function AdminRepartidores() {
                   return (
                     <div key={i} onClick={() => setPerfilRepartidor(r.nombre)}
                       style={{ display: "flex", flexDirection: "column", alignItems: "center", cursor: "pointer", width: 120 }}>
-                      <div style={{ fontSize: "1.5rem", marginBottom: "0.25rem" }}>{medallas[posReal]}</div>
+                      <Medal size={28} color={coloresPodio[posReal]} style={{ marginBottom: "0.25rem" }} />
                       <div style={{ width: 48, height: 48, borderRadius: "50%", background: coloresPodio[posReal], display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: "1.1rem", fontWeight: 700, marginBottom: "0.5rem", boxShadow: "0 4px 12px rgba(0,0,0,0.15)" }}>
                         {r.nombre.charAt(0)}
                       </div>
