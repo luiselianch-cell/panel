@@ -5,7 +5,7 @@
 import { useState, useEffect, useRef } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from "recharts";
 // eslint-disable-next-line no-unused-vars
-import { Home, ClipboardList, BarChart2, Users, UserCheck, Search, Menu, MessageCircle, Eye, EyeOff, Clock, Package, Medal } from "lucide-react";
+import { Home, ClipboardList, BarChart2, Users, UserCheck, Search, Menu, MessageCircle, Eye, EyeOff, Clock, Package, Medal, Trophy } from "lucide-react";
 import { Copy, XCircle, RefreshCw, Check, Pencil, UserX, Download, CheckCircle, Banknote, ShoppingBag, Truck, Sun, Phone, MapPin, DollarSign } from "lucide-react";
 import * as XLSX from 'xlsx'
 
@@ -2760,7 +2760,7 @@ function AdminVendedores() {
     .sort((a, b) => b.total - a.total)
     .slice(0, 3);
 
-  const medallas = ["🥇", "🥈", "🥉"];
+
   const coloresPodio = ["#FFD700", "#C0C0C0", "#CD7F32"];
   const altosPodio = [80, 60, 45];
 
@@ -2797,7 +2797,7 @@ function AdminVendedores() {
           {rankingMes.length > 0 && (
             <div style={{ background: "#fff", borderRadius: "16px", padding: "1.5rem", boxShadow: "0 2px 12px rgba(0,0,0,0.04)", marginBottom: "1.5rem" }}>
               <div style={{ fontSize: "0.72rem", fontWeight: 600, color: "#6e6e73", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "1.5rem", textAlign: "center" }}>
-                🏆 Ranking del mes
+                <Trophy size={14} color="#6e6e73" style={{ marginRight: "0.4rem" }} />Ranking del mes
               </div>
               <div style={{ display: "flex", justifyContent: "center", alignItems: "flex-end", gap: "1rem" }}>
                 {/* Reordenar para que el 1ro esté en el centro */}
@@ -2806,7 +2806,7 @@ function AdminVendedores() {
                   const posReal = i === 0 ? 1 : i === 1 ? 0 : 2;
                   return (
                     <div key={i} onClick={() => setPerfilVendedor(v.vendedor)} style={{ display: "flex", flexDirection: "column", alignItems: "center", cursor: "pointer", width: 120 }}>
-                      <div style={{ fontSize: "1.5rem", marginBottom: "0.25rem" }}>{medallas[posReal]}</div>
+                      <Medal size={28} color={coloresPodio[posReal]} style={{ marginBottom: "0.25rem" }} />
                       <div style={{ width: 48, height: 48, borderRadius: "50%", background: coloresPodio[posReal], display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: "1.1rem", fontWeight: 700, marginBottom: "0.5rem", boxShadow: "0 4px 12px rgba(0,0,0,0.15)" }}>
                         {v.vendedor.charAt(0)}
                       </div>
@@ -2880,7 +2880,6 @@ function AdminVendedores() {
     </div>
   );
 }
-
 
 
 // ══ VendedorPanel ═════════════════════════════════════════
