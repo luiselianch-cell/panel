@@ -1409,6 +1409,7 @@ function AdminOrdenes({ rolUsuario }) {
       setDeptos(await resD.json());
     } catch (e) { console.error(e); }
     setLoading(false);
+    primeraVez.current = false;
   }
 
   async function actualizarEnvio(id, valor, tipo) {
