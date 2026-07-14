@@ -1453,7 +1453,7 @@ function DashboardContador({ user }) {
 
 
 // ══ AdminOrdenes ══════════════════════════════════════════
-function AdminOrdenes({ rolUsuario }) {
+function AdminOrdenes({ rolUsuario, user }) {
   const [locales, setLocales] = useState([]);
   const [deptos, setDeptos] = useState([]);
   const [loading, setLoading] = useState(true);
