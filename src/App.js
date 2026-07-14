@@ -1364,6 +1364,7 @@ function AdminOrdenes({ rolUsuario }) {
   const [busqueda, setBusqueda] = useState("");
   const [rangoFecha, setRangoFecha] = useState("dia");
   const [filtroPendientes, setFiltroPendientes] = useState(false);
+  const primeraVez = useRef(true);
 
   const esAdminCompleto = rolUsuario === "admin";
 
@@ -1380,7 +1381,10 @@ function AdminOrdenes({ rolUsuario }) {
   ];
 
   useEffect(() => {
-  cargarOrdenes();
+  if (primeraVez.current) {
+    primeraVez.current = false;
+    cargarOrdenes();
+  }
   const interval = setInterval(cargarOrdenes, 10000);
   return () => clearInterval(interval);
 }, [filtroFecha, rangoFecha]);
