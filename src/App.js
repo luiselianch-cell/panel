@@ -1379,7 +1379,12 @@ function AdminOrdenes({ rolUsuario }) {
     "WhatsApp Secundario", "Inbox Pagina FB", "Referido", "Otro",
   ];
 
-  useEffect(() => { cargarOrdenes(); }, [filtroFecha, rangoFecha]);
+  useEffect(() => {
+  cargarOrdenes();
+  const interval = setInterval(cargarOrdenes, 10000);
+  return () => clearInterval(interval);
+}, [filtroFecha, rangoFecha]);
+
 
   async function cargarOrdenes() {
     setLoading(true);
@@ -3371,8 +3376,11 @@ function OperacionesPanel({ user }) {
   const [tipoEditar, setTipoEditar] = useState(null);
   const [copiado, setCopiado] = useState(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const ordenesRef = useRef([]);
+  const ultimaOrdenRef = useRef(null);
 
   useEffect(() => {
+    if ("Notification" in window) Notification.requestPermission();
     function handleResize() { setIsMobile(window.innerWidth < 768); }
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
@@ -3383,6 +3391,12 @@ function OperacionesPanel({ user }) {
     const interval = setInterval(cargarDatos, 10000);
     return () => clearInterval(interval);
   }, [filtroFecha]);
+
+  function reproducirSonido() {
+    const audio = new Audio("/notificacion.mp3");
+    audio.volume = 0.5;
+    audio.play().catch(() => {});
+  }
 
   async function cargarDatos() {
     const [resL, resD, resR] = await Promise.all([
@@ -3396,8 +3410,27 @@ function OperacionesPanel({ user }) {
         headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
       }),
     ]);
-    setLocales(await resL.json());
-    setDeptos(await resD.json());
+
+    const localesData = await resL.json();
+    const deptosData = await resD.json();
+    const todasNuevas = [...localesData, ...deptosData];
+
+    // Detectar orden nueva aprobada
+    const ultima = todasNuevas.sort((a, b) => new Date(b.creado_en) - new Date(a.creado_en))[0];
+    if (ultimaOrdenRef.current && ultima && ultima.id !== ultimaOrdenRef.current) {
+      reproducirSonido();
+      if (Notification.permission === "granted") {
+        new Notification("📦 Nueva orden aprobada", {
+          body: (ultima.numero_ficha || "") + " — " + (ultima.nombre_cliente || "Sin nombre") + " — " + ultima.total_pagar,
+          icon: "/logo.png",
+        });
+      }
+    }
+    ultimaOrdenRef.current = ultima?.id;
+    ordenesRef.current = todasNuevas;
+
+    setLocales(localesData);
+    setDeptos(deptosData);
     setRepartidores(await resR.json());
     setLoading(false);
   }
@@ -3457,12 +3490,23 @@ function OperacionesPanel({ user }) {
 
   const listaActual = tab === "todos" ? filtradas : tab === "locales" ? locales : deptos;
 
+  const copiarOrden = (o) => {
+    const texto = "Orden " + o.numero_ficha +
+      "\n👤 " + (o.nombre_cliente || "Sin nombre") +
+      "\n📱 " + (o.numero_contacto || "-") +
+      "\n📍 " + (o.municipio || o.departamento || "-") +
+      "\n🏠 " + (o.direccion_entrega || "-") +
+      "\n📦 " + o.articulos +
+      "\n💰 " + o.total_pagar;
+    navigator.clipboard.writeText(texto);
+    setCopiado(o.id);
+    setTimeout(() => setCopiado(null), 2000);
+  };
+
   // ══ Vista Móvil ══
   if (isMobile) {
     return (
       <div style={{ background: "#f5f5f7", minHeight: "100vh", fontFamily: "'Inter', sans-serif" }}>
-
-        {/* Header móvil */}
         <div style={{ background: "#fff", padding: "1rem", borderBottom: "1px solid #f5f5f7", position: "sticky", top: 52, zIndex: 50 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
@@ -3472,13 +3516,10 @@ function OperacionesPanel({ user }) {
             <input type="date" value={filtroFecha} onChange={e => setFiltroFecha(e.target.value)}
               style={{ padding: "0.35rem 0.6rem", border: "1px solid #e5e5ea", borderRadius: "8px", fontSize: "0.8rem", background: "#fff", outline: "none" }} />
           </div>
-
-          {/* Búsqueda */}
           <input placeholder="Buscar ficha o cliente..." value={busqueda} onChange={e => setBusqueda(e.target.value)}
             style={{ width: "100%", padding: "0.6rem 0.85rem", border: "1px solid #e5e5ea", borderRadius: "10px", fontSize: "0.85rem", background: "#f5f5f7", outline: "none", boxSizing: "border-box" }} />
         </div>
 
-        {/* Stats compactas */}
         <div style={{ padding: "0.75rem 1rem", overflowX: "auto" }}>
           <div style={{ display: "flex", gap: "0.5rem", minWidth: "max-content" }}>
             {[
@@ -3496,17 +3537,12 @@ function OperacionesPanel({ user }) {
           </div>
         </div>
 
-        {/* Tabs */}
         <div style={{ padding: "0 1rem", display: "flex", gap: "0.25rem", marginBottom: "0.5rem" }}>
           {[["todos", `Todos (${filtradas.length})`], ["locales", `Loc. (${locales.length})`], ["deptos", `Dep. (${deptos.length})`]].map(([val, label]) => (
-            <button key={val} onClick={() => setTab(val)} style={{
-              ...tabStyle(tab === val),
-              fontSize: "0.78rem", padding: "0.35rem 0.75rem",
-            }}>{label}</button>
+            <button key={val} onClick={() => setTab(val)} style={{ ...tabStyle(tab === val), fontSize: "0.78rem", padding: "0.35rem 0.75rem" }}>{label}</button>
           ))}
         </div>
 
-        {/* Cards móvil */}
         <div style={{ padding: "0 1rem 2rem", display: "flex", flexDirection: "column", gap: "0.75rem" }}>
           {loading ? (
             <div style={{ textAlign: "center", color: "#6e6e73", padding: "2rem" }}>Cargando...</div>
@@ -3516,34 +3552,22 @@ function OperacionesPanel({ user }) {
             const tipo = o.departamento ? "departamental" : "local";
             return (
               <div key={o.id} style={{ background: "#fff", borderRadius: "16px", padding: "1rem", boxShadow: "0 2px 12px rgba(0,0,0,0.04)" }}>
-
-                {/* Fila superior */}
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "0.6rem" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", flexWrap: "wrap" }}>
-                    <span style={{ background: "rgba(0,122,255,0.1)", color: "#007AFF", borderRadius: "6px", padding: "0.15rem 0.4rem", fontSize: "0.7rem", fontWeight: 700 }}>
-                      #{o.numero_ficha || "-"}
-                    </span>
+                    <span style={{ background: "rgba(0,122,255,0.1)", color: "#007AFF", borderRadius: "6px", padding: "0.15rem 0.4rem", fontSize: "0.7rem", fontWeight: 700 }}>#{o.numero_ficha || "-"}</span>
                     {badgeEstado(o.estado_flujo || "aprobada")}
                   </div>
                   <span style={{ fontWeight: 700, color: "#1d1d1f", fontSize: "0.95rem" }}>{o.total_pagar}</span>
                 </div>
-
-                {/* Cliente */}
                 <div style={{ fontWeight: 600, color: "#1d1d1f", fontSize: "0.9rem", marginBottom: "0.25rem" }}>{o.nombre_cliente || "Sin nombre"}</div>
-
-                {/* Artículos */}
                 <div style={{ display: "flex", alignItems: "flex-start", gap: "0.4rem", marginBottom: "0.4rem" }}>
                   <Package size={12} color="#6e6e73" style={{ flexShrink: 0, marginTop: "0.15rem" }} />
                   <span style={{ fontSize: "0.78rem", color: "#6e6e73" }}>{o.articulos?.slice(0, 50)}{o.articulos?.length > 50 ? "…" : ""}</span>
                 </div>
-
-                {/* Dirección */}
-                <div style={{ display: "flex", alignItems: "flex-start", gap: "0.4rem", background: "#f5f5f7", borderRadius: "8px", padding: "0.5rem 0.75rem", marginBottom: "0.75rem" }}>
+                <div style={{ display: "flex", alignItems: "flex-start", gap: "0.4rem", background: "#f5f5f7", borderRadius: "8px", padding: "0.5rem 0.75rem", marginBottom: "0.6rem" }}>
                   <MapPin size={12} color="#6e6e73" style={{ flexShrink: 0, marginTop: "0.15rem" }} />
                   <span style={{ fontSize: "0.78rem", color: "#6e6e73" }}>{o.direccion_entrega || (o.departamento + " - " + o.municipio)}</span>
                 </div>
-
-                {/* Repartidor asignado */}
                 {o.repartidor_asignado && (
                   <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", marginBottom: "0.75rem" }}>
                     <Truck size={12} color="#5856D6" />
@@ -3551,26 +3575,11 @@ function OperacionesPanel({ user }) {
                     {o.monto_repartidor > 0 && <span style={{ fontSize: "0.72rem", color: "#FF9500" }}>— ${o.monto_repartidor}</span>}
                   </div>
                 )}
-
-                {/* Acciones */}
                 <AccionesOperaciones
-                  orden={o}
-                  tipo={tipo}
-                  repartidores={repartidores}
+                  orden={o} tipo={tipo} repartidores={repartidores}
                   onCambiarEstado={cambiarEstadoFlujo}
                   onAsignar={asignarRepartidor}
-                  onCopiar={() => {
-                    const texto = "Orden " + o.numero_ficha +
-                      "\n👤 " + (o.nombre_cliente || "Sin nombre") +
-                      "\n📱 " + (o.numero_contacto || "-") +
-                      "\n📍 " + (o.municipio || o.departamento || "-") +
-                      "\n🏠 " + (o.direccion_entrega || "-") +
-                      "\n📦 " + o.articulos +
-                      "\n💰 " + o.total_pagar;
-                    navigator.clipboard.writeText(texto);
-                    setCopiado(o.id);
-                    setTimeout(() => setCopiado(null), 2000);
-                  }}
+                  onCopiar={() => copiarOrden(o)}
                   copiado={copiado === o.id}
                   isMobile={true}
                 />
@@ -3640,7 +3649,7 @@ function OperacionesPanel({ user }) {
                 {listaActual.length === 0 && (
                   <tr><td colSpan={8} style={{ padding: "3rem", textAlign: "center", color: "#6e6e73" }}>No hay órdenes</td></tr>
                 )}
-                {listaActual.map((o, i) => {
+                {listaActual.map((o) => {
                   const tipo = o.departamento ? "departamental" : "local";
                   return (
                     <tr key={o.id} style={{ borderBottom: "1px solid #f5f5f7" }}>
@@ -3658,23 +3667,10 @@ function OperacionesPanel({ user }) {
                       </td>
                       <td style={{ padding: "0.75rem 1rem" }} onClick={e => e.stopPropagation()}>
                         <AccionesOperaciones
-                          orden={o}
-                          tipo={tipo}
-                          repartidores={repartidores}
+                          orden={o} tipo={tipo} repartidores={repartidores}
                           onCambiarEstado={cambiarEstadoFlujo}
                           onAsignar={asignarRepartidor}
-                          onCopiar={() => {
-                            const texto = "Orden " + o.numero_ficha +
-                              "\n👤 " + (o.nombre_cliente || "Sin nombre") +
-                              "\n📱 " + (o.numero_contacto || "-") +
-                              "\n📍 " + (o.municipio || o.departamento || "-") +
-                              "\n🏠 " + (o.direccion_entrega || "-") +
-                              "\n📦 " + o.articulos +
-                              "\n💰 " + o.total_pagar;
-                            navigator.clipboard.writeText(texto);
-                            setCopiado(o.id);
-                            setTimeout(() => setCopiado(null), 2000);
-                          }}
+                          onCopiar={() => copiarOrden(o)}
                           copiado={copiado === o.id}
                         />
                       </td>
@@ -3697,6 +3693,7 @@ function OperacionesPanel({ user }) {
 }
 
 
+
 // ══ Acciones por orden en Operaciones ══════════════════════
 function AccionesOperaciones({ orden, tipo, repartidores, onCambiarEstado, onAsignar, onCopiar, copiado, isMobile }) {
   const [showAsignar, setShowAsignar] = useState(false);
@@ -3704,6 +3701,7 @@ function AccionesOperaciones({ orden, tipo, repartidores, onCambiarEstado, onAsi
   const [montoRep, setMontoRep] = useState("");
 
   const estado = orden.estado_flujo || "aprobada";
+  const esDepartamental = tipo === "departamental";
 
   const btnBase = {
     border: "none", borderRadius: "8px",
@@ -3717,42 +3715,64 @@ function AccionesOperaciones({ orden, tipo, repartidores, onCambiarEstado, onAsi
 
   return (
     <div style={{ display: "flex", gap: "0.4rem", alignItems: "center", flexWrap: "wrap", width: isMobile ? "100%" : "auto" }}>
+
+      {/* Botón Preparar — igual para locales y departamentales */}
       {estado === "aprobada" && (
         <button onClick={() => onCambiarEstado(orden.id, tipo, "preparada")}
           style={{ ...btnBase, background: "rgba(255,149,0,0.1)", color: "#FF9500" }}>
           <Package size={isMobile ? 15 : 14} /> Preparar
         </button>
       )}
-      {estado === "preparada" && (
+
+      {/* Botón Asignar — solo para locales */}
+      {estado === "preparada" && !esDepartamental && (
         <button onClick={() => setShowAsignar(true)}
           style={{ ...btnBase, background: "rgba(88,86,214,0.1)", color: "#5856D6" }}>
           <Truck size={isMobile ? 15 : 14} /> Asignar
         </button>
       )}
+
+      {/* Departamentales: en preparada ya están listas — badge informativo */}
+      {estado === "preparada" && esDepartamental && (
+        <span style={{
+          background: "rgba(52,199,89,0.1)", color: "#34C759",
+          borderRadius: "6px", padding: "0.3rem 0.6rem",
+          fontSize: "0.75rem", fontWeight: 600,
+          display: "flex", alignItems: "center", gap: "0.3rem",
+        }}>
+          <CheckCircle size={13} /> Lista para envío
+        </span>
+      )}
+
+      {/* Cancelar */}
       {(estado === "aprobada" || estado === "preparada" || estado === "asignada") && (
         <button onClick={() => onCambiarEstado(orden.id, tipo, "cancelada")}
           style={{ ...btnBase, background: "rgba(255,59,48,0.1)", color: "#ff3b30" }}>
           <XCircle size={isMobile ? 15 : 14} /> Cancelar
         </button>
       )}
+
+      {/* Reactivar */}
       {estado === "cancelada" && (
         <button onClick={() => onCambiarEstado(orden.id, tipo, "aprobada")}
           style={{ ...btnBase, background: "rgba(52,199,89,0.1)", color: "#34C759" }}>
           <RefreshCw size={isMobile ? 15 : 14} /> Reactivar
         </button>
       )}
+
+      {/* Copiar */}
       <button onClick={onCopiar} style={{
         padding: isMobile ? "0.65rem" : "0.45rem",
         background: copiado ? "rgba(52,199,89,0.1)" : "#f5f5f7",
         border: "none", borderRadius: "8px", cursor: "pointer",
         color: copiado ? "#34C759" : "#6e6e73",
         display: "flex", alignItems: "center", justifyContent: "center",
-        flex: isMobile ? "none" : "none",
         minWidth: isMobile ? 44 : "auto",
       }}>
         {copiado ? <Check size={isMobile ? 16 : 15} /> : <Copy size={isMobile ? 16 : 15} />}
       </button>
 
+      {/* Modal asignar repartidor — solo locales */}
       {showAsignar && (
         <div style={{
           position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
@@ -3824,17 +3844,26 @@ function AccionesOperaciones({ orden, tipo, repartidores, onCambiarEstado, onAsi
   );
 }
 
+
 // ══ Panel de Repartidor ════════════════════════════════════
 function RepartidorPanel({ user }) {
   const [ordenes, setOrdenes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filtroFecha, setFiltroFecha] = useState(fechaHoy());
+  const ordenesRef = useRef([]);
 
   useEffect(() => {
+    if ("Notification" in window) Notification.requestPermission();
     cargarMisEntregas();
     const interval = setInterval(cargarMisEntregas, 15000);
     return () => clearInterval(interval);
   }, [filtroFecha]);
+
+  function reproducirSonido() {
+    const audio = new Audio("/notificacion.mp3");
+    audio.volume = 0.5;
+    audio.play().catch(() => {});
+  }
 
   async function cargarMisEntregas() {
     const nombre = encodeURIComponent(user.nombre);
@@ -3848,7 +3877,23 @@ function RepartidorPanel({ user }) {
     ]);
     const l = await resL.json();
     const d = await resD.json();
-    setOrdenes([...l, ...d].sort((a, b) => new Date(b.creado_en) - new Date(a.creado_en)));
+    const nuevas = [...l, ...d].sort((a, b) => new Date(b.creado_en) - new Date(a.creado_en));
+
+    // Detectar orden nueva asignada
+    nuevas.forEach(orden => {
+      const existia = ordenesRef.current.find(o => o.id === orden.id);
+      if (!existia) {
+        reproducirSonido();
+        if (Notification.permission === "granted") {
+          new Notification("🚚 Nueva entrega asignada", {
+            body: (orden.numero_ficha || "") + " — " + (orden.nombre_cliente || "Sin nombre") + " — " + (orden.direccion_entrega || orden.municipio || ""),
+            icon: "/logo.png",
+          });
+        }
+      }
+    });
+    ordenesRef.current = nuevas;
+    setOrdenes(nuevas);
     setLoading(false);
   }
 
@@ -3871,7 +3916,6 @@ function RepartidorPanel({ user }) {
 
   return (
     <div style={{ minHeight: "100vh", background: "#f5f5f7", fontFamily: "'Inter', sans-serif" }}>
-      {/* Hero oscuro */}
       <div style={{
         background: "linear-gradient(135deg, #1c1c1e 0%, #2c2c2e 100%)",
         padding: "2rem 1.5rem 3rem",
@@ -3889,7 +3933,6 @@ function RepartidorPanel({ user }) {
             {user.nombre.replace("(Rep)", "").trim()}
           </h1>
 
-          {/* Cards de stats — horizontales sin overflow */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.6rem" }}>
             {[
               { label: "Pendientes", value: pendientes.length.toString(), color: "#FF9500", icon: <Clock size={14} color="#FF9500" /> },
@@ -3897,11 +3940,9 @@ function RepartidorPanel({ user }) {
               { label: "A cobrar", value: formatMoney(totalACobrar), color: "#007AFF", icon: <DollarSign size={14} color="#007AFF" /> },
             ].map((c, i) => (
               <div key={i} style={{
-                background: "rgba(255,255,255,0.08)",
-                backdropFilter: "blur(10px)",
+                background: "rgba(255,255,255,0.08)", backdropFilter: "blur(10px)",
                 border: "1px solid rgba(255,255,255,0.1)",
-                borderRadius: "14px", padding: "0.85rem 0.75rem",
-                textAlign: "center",
+                borderRadius: "14px", padding: "0.85rem 0.75rem", textAlign: "center",
               }}>
                 <div style={{ display: "flex", justifyContent: "center", marginBottom: "0.35rem" }}>{c.icon}</div>
                 <div style={{ fontSize: "0.6rem", color: "rgba(255,255,255,0.45)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "0.2rem" }}>{c.label}</div>
@@ -3912,7 +3953,6 @@ function RepartidorPanel({ user }) {
         </div>
       </div>
 
-      {/* Lista de entregas */}
       <div style={{ maxWidth: 560, margin: "1.5rem auto 0", padding: "0 1.5rem 3rem", position: "relative" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
           <h2 style={{ fontSize: "1rem", fontWeight: 600, color: "#1d1d1f", margin: 0 }}>Mis entregas</h2>
@@ -3937,10 +3977,8 @@ function RepartidorPanel({ user }) {
                 <div key={o.id} style={{
                   background: "#fff", borderRadius: "16px", padding: "1rem 1.25rem",
                   boxShadow: "0 2px 12px rgba(0,0,0,0.04)",
-                  
                   opacity: entregada ? 0.7 : 1,
                 }}>
-                  {/* Header de la card */}
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "0.75rem" }}>
                     <div>
                       <span style={{ background: "rgba(0,122,255,0.1)", color: "#007AFF", borderRadius: "6px", padding: "0.15rem 0.4rem", fontSize: "0.68rem", fontWeight: 700 }}>
@@ -3961,13 +3999,11 @@ function RepartidorPanel({ user }) {
                     </div>
                   </div>
 
-                  {/* Dirección */}
                   <div style={{ display: "flex", alignItems: "flex-start", gap: "0.5rem", background: "#f5f5f7", borderRadius: "8px", padding: "0.6rem 0.85rem", marginBottom: "0.6rem" }}>
                     <MapPin size={13} color="#6e6e73" style={{ flexShrink: 0, marginTop: "0.1rem" }} />
                     <span style={{ fontSize: "0.8rem", color: "#6e6e73" }}>{o.direccion_entrega || (o.departamento + " - " + o.municipio)}</span>
                   </div>
 
-                  {/* Artículos */}
                   <div style={{ display: "flex", alignItems: "flex-start", gap: "0.5rem", marginBottom: "0.75rem" }}>
                     <Package size={13} color="#6e6e73" style={{ flexShrink: 0, marginTop: "0.1rem" }} />
                     <span style={{ fontSize: "0.78rem", color: "#6e6e73" }}>{o.articulos?.slice(0, 60)}{o.articulos?.length > 60 ? "…" : ""}</span>
@@ -3994,98 +4030,6 @@ function RepartidorPanel({ user }) {
           </div>
         )}
       </div>
-    </div>
-  );
-}
-
-
-// ══ Panel de Cobros (Operaciones) ══════════════════════════
-function CobrosRepartidor() {
-  const [repartidores, setRepartidores] = useState([]);
-  const [ordenes, setOrdenes] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [filtroFecha, setFiltroFecha] = useState(fechaHoy());
-
-  useEffect(() => { cargarDatos(); }, [filtroFecha]);
-
-  async function cargarDatos() {
-    setLoading(true);
-    const [resR, resL, resD] = await Promise.all([
-      fetch(SUPABASE_URL + "/rest/v1/usuarios?rol=eq.repartidor&activo=eq.true", {
-        headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
-      }),
-      fetch(SUPABASE_URL + "/rest/v1/ordenes_locales?fecha_orden=eq." + filtroFecha + "&estado_flujo=eq.entregada", {
-        headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
-      }),
-      fetch(SUPABASE_URL + "/rest/v1/ordenes_departamentales?fecha_orden=eq." + filtroFecha + "&estado_flujo=eq.entregada", {
-        headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
-      }),
-    ]);
-    setRepartidores(await resR.json());
-    const l = await resL.json();
-    const d = await resD.json();
-    setOrdenes([...l, ...d]);
-    setLoading(false);
-  }
-
-  const porRepartidor = {};
-  ordenes.forEach(o => {
-    const r = o.repartidor_asignado || "Sin asignar";
-    if (!porRepartidor[r]) porRepartidor[r] = { entregas: 0, totalCobrado: 0, totalProductos: 0 };
-    porRepartidor[r].entregas++;
-    porRepartidor[r].totalCobrado += o.monto_repartidor || 0;
-    porRepartidor[r].totalProductos += parseMonto(o.total_pagar);
-  });
-
-  return (
-    <div style={{ maxWidth: 1200, margin: "0 auto", padding: "2rem 1.5rem" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
-        <h2 style={{ fontSize: "1.5rem", fontWeight: 700, color: "#1d1d1f", margin: 0, letterSpacing: "-0.02em" }}>Cobros por repartidor</h2>
-        <input type="date" value={filtroFecha} onChange={e => setFiltroFecha(e.target.value)} style={{
-          padding: "0.5rem 0.85rem", border: "1px solid #e5e5ea", borderRadius: "10px",
-          fontSize: "0.85rem", background: "#fff", outline: "none",
-        }} />
-      </div>
-
-      {loading ? (
-        <div style={{ textAlign: "center", color: "#6e6e73", padding: "3rem" }}>Cargando...</div>
-      ) : Object.keys(porRepartidor).length === 0 ? (
-        <div style={{ background: "#fff", borderRadius: "16px", padding: "3rem", textAlign: "center", color: "#6e6e73" }}>
-          No hay entregas completadas para esta fecha
-        </div>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-          {Object.entries(porRepartidor).map(([nombre, data], i) => (
-            <div key={i} style={{ background: "#fff", borderRadius: "16px", padding: "1.25rem 1.5rem", boxShadow: "0 2px 12px rgba(0,0,0,0.04)" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-                  <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#5856D6", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 700 }}>
-                    {nombre.charAt(0)}
-                  </div>
-                  <div>
-                    <div style={{ fontWeight: 600, color: "#1d1d1f" }}>{nombre}</div>
-                    <div style={{ color: "#6e6e73", fontSize: "0.78rem" }}>{data.entregas} entrega{data.entregas !== 1 ? "s" : ""}</div>
-                  </div>
-                </div>
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.75rem", paddingTop: "1rem", borderTop: "1px solid #f5f5f7" }}>
-                <div>
-                  <div style={{ fontSize: "0.7rem", color: "#6e6e73", textTransform: "uppercase", letterSpacing: "0.05em" }}>Total productos</div>
-                  <div style={{ fontSize: "1.1rem", fontWeight: 700, color: "#1d1d1f" }}>{formatMoney(data.totalProductos)}</div>
-                </div>
-                <div>
-                  <div style={{ fontSize: "0.7rem", color: "#6e6e73", textTransform: "uppercase", letterSpacing: "0.05em" }}>Se queda</div>
-                  <div style={{ fontSize: "1.1rem", fontWeight: 700, color: "#FF9500" }}>{formatMoney(data.totalCobrado)}</div>
-                </div>
-                <div>
-                  <div style={{ fontSize: "0.7rem", color: "#6e6e73", textTransform: "uppercase", letterSpacing: "0.05em" }}>Debe entregar</div>
-                  <div style={{ fontSize: "1.1rem", fontWeight: 700, color: "#34C759" }}>{formatMoney(data.totalProductos - data.totalCobrado)}</div>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   );
 }
