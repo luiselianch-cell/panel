@@ -354,12 +354,15 @@ function StatCard({ label, value, sub, accent }) {
 }
 
 // ══ Modal Editar Orden ════════════════════════════════════
-function ModalEditar({ orden, tipo, onClose, onSave, rolUsuario }) {
+function ModalEditar({ orden, tipo, onClose, onSave, rolUsuario, user }) {
   const [form, setForm] = useState({ ...orden });
   const [saving, setSaving] = useState(false);
+  const [comentarios, setComentarios] = useState([]);
+  const [nuevoComentario, setNuevoComentario] = useState("");
+  const [enviando, setEnviando] = useState(false);
+  const chatRef = useRef(null);
 
-  // Campos bloqueados para el rol "logística" — protegen comisiones y montos de venta
-  const bloqueado = rolUsuario === "logística";
+  const bloqueado = rolUsuario === "logística" || rolUsuario === "operaciones";
 
   const MUNICIPIOS_LOCAL = ["SAN SALVADOR", "SANTA ANA", "SAN MIGUEL", "APOPA", "SOYAPANGO", "MEJICANOS", "SANTA TECLA", "CIUDAD DELGADO", "CUSCATANCINGO", "ILOPANGO", "TONACATEPEQUE", "ANTIGUO CUSCATLAN", "AYUTUXTEPEQUE", "Otro"];
   const DEPARTAMENTOS = ["SANTA ANA", "SAN MIGUEL", "AHUACHAPAN", "CABAÑAS", "CHALATENANGO", "CUSCATLAN", "LA LIBERTAD", "LA UNION", "LA PAZ", "MORAZAN", "SONSONATE", "SAN SALVADOR", "SAN VICENTE", "USULUTAN"];
@@ -368,6 +371,38 @@ function ModalEditar({ orden, tipo, onClose, onSave, rolUsuario }) {
   const PERFILES = ["Instagram", "Facebook", "TikTok", "WhatsApp Principal", "WhatsApp Secundario", "Inbox Pagina FB", "Referido", "Otro"];
   const QUIEN_INGRESA = ["Tecno Gadget - Fer", "Tecno Gadget - Jefferson", "Tecno Gadget - Wendy", "Tecno Gadget - Liss", "Tecno Gadget - Isa", "Tecno Gadget - Josue"];
   const TIPOS_ENTREGA = ["Lugar de residencia / trabajo", "Punto de encuentro (Gasolinera, parque, centro comercial etc)", "En agencia de mensajeria (Cliente pasará a recoger)"];
+
+  useEffect(() => { cargarComentarios(); }, []);
+
+  async function cargarComentarios() {
+    const res = await fetch(SUPABASE_URL + "/rest/v1/comentarios_ordenes?orden_id=eq." + orden.id + "&tipo_orden=eq." + tipo + "&order=creado_en.asc", {
+      headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
+    });
+    const data = await res.json();
+    setComentarios(data);
+    setTimeout(() => {
+      if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight;
+    }, 100);
+  }
+
+  async function enviarComentario() {
+    if (!nuevoComentario.trim()) return;
+    setEnviando(true);
+    await fetch(SUPABASE_URL + "/rest/v1/comentarios_ordenes", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
+      body: JSON.stringify({
+        orden_id: orden.id,
+        tipo_orden: tipo,
+        usuario: user?.nombre || "Usuario",
+        rol: rolUsuario || "admin",
+        mensaje: nuevoComentario.trim(),
+      }),
+    });
+    setNuevoComentario("");
+    setEnviando(false);
+    cargarComentarios();
+  }
 
   function handleChange(e) {
     const { name, value } = e.target;
@@ -379,11 +414,7 @@ function ModalEditar({ orden, tipo, onClose, onSave, rolUsuario }) {
     const tabla = tipo === "local" ? "ordenes_locales" : "ordenes_departamentales";
     await fetch(SUPABASE_URL + "/rest/v1/" + tabla + "?id=eq." + orden.id, {
       method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        apikey: SUPABASE_KEY,
-        Authorization: "Bearer " + SUPABASE_KEY,
-      },
+      headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY },
       body: JSON.stringify(form),
     });
     setSaving(false);
@@ -391,20 +422,24 @@ function ModalEditar({ orden, tipo, onClose, onSave, rolUsuario }) {
     onClose();
   }
 
+  const coloresRol = {
+    admin: "#007AFF",
+    operaciones: "#5856D6",
+    vendedor: "#34C759",
+    logística: "#FF9500",
+    repartidor: "#FF9500",
+  };
+
   const inputStyle = {
     width: "100%", padding: "0.6rem 0.85rem",
     border: "1px solid #e5e5ea", borderRadius: "8px",
     fontSize: "0.88rem", outline: "none",
     background: "#f5f5f7", color: "#1d1d1f",
-    fontFamily: "'Inter', sans-serif",
-    boxSizing: "border-box",
+    fontFamily: "'Inter', sans-serif", boxSizing: "border-box",
   };
 
   const inputBloqueadoStyle = {
-    ...inputStyle,
-    opacity: 0.55,
-    cursor: "not-allowed",
-    background: "#ececec",
+    ...inputStyle, opacity: 0.55, cursor: "not-allowed", background: "#ececec",
   };
 
   const labelStyle = {
@@ -424,173 +459,236 @@ function ModalEditar({ orden, tipo, onClose, onSave, rolUsuario }) {
     }} onClick={onClose}>
       <div style={{
         background: "#fff", borderRadius: "20px",
-        padding: "1.5rem", width: "100%", maxWidth: 560,
-        maxHeight: "85vh",
+        width: "100%", maxWidth: 680,
+        maxHeight: "90vh",
         boxShadow: "0 20px 60px rgba(0,0,0,0.2)",
         display: "flex", flexDirection: "column",
       }} onClick={e => e.stopPropagation()}>
 
         {/* Header */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem", flexShrink: 0 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1.25rem 1.5rem", borderBottom: "1px solid #f5f5f7", flexShrink: 0 }}>
           <div>
-            <h2 style={{ fontSize: "1.2rem", fontWeight: 700, color: "#1d1d1f", margin: 0 }}>Editar Orden</h2>
+            <h2 style={{ fontSize: "1.1rem", fontWeight: 700, color: "#1d1d1f", margin: 0 }}>Editar Orden</h2>
             <p style={{ color: "#6e6e73", fontSize: "0.82rem", margin: "0.2rem 0 0" }}>Ficha {orden.numero_ficha} — {tipo === "local" ? "Local" : "Departamental"}</p>
           </div>
-          <button onClick={onClose} style={{ background: "#f5f5f7", border: "none", borderRadius: "50%", width: 32, height: 32, cursor: "pointer", fontSize: "1rem", display: "flex", alignItems: "center", justifyContent: "center", color: "#6e6e73" }}>✕</button>
+          <button onClick={onClose} style={{ background: "#f5f5f7", border: "none", borderRadius: "50%", width: 32, height: 32, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#6e6e73" }}>✕</button>
         </div>
 
-        {/* Aviso de campos bloqueados para logística */}
-        {bloqueado && (
-          <div style={{ background: "#fff7e6", borderRadius: "10px", padding: "0.6rem 0.85rem", marginBottom: "1rem", fontSize: "0.78rem", color: "#a87000", flexShrink: 0 }}>
-            🔒 El total y el vendedor asignado no se pueden modificar desde esta cuenta.
-          </div>
-        )}
+        {/* Layout dos columnas */}
+        <div style={{ flex: 1, display: "flex", minHeight: 0 }}>
 
-        {/* Contenido scrolleable */}
-        <div style={{ flex: 1, overflowY: "auto", paddingRight: "0.25rem" }}>
+          {/* Columna izquierda — Formulario */}
+          <div style={{ flex: 1, overflowY: "auto", padding: "1.25rem 1.5rem", borderRight: "1px solid #f5f5f7" }}>
 
-          {/* Estado */}
-          <div style={{ padding: "0.75rem 1rem", background: form.estado === "cancelada" ? "#fff2f2" : "#f0fff4", borderRadius: "10px", marginBottom: "1.25rem", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <span style={{ fontSize: "0.85rem", fontWeight: 600, color: form.estado === "cancelada" ? "#ff3b30" : "#34C759" }}>
-              {form.estado === "cancelada" ? "❌ Cancelada" : "✅ Completada"}
-            </span>
-            <button onClick={() => setForm(p => ({ ...p, estado: p.estado === "cancelada" ? "completada" : "cancelada" }))}
-              style={{
-                padding: "0.4rem 0.85rem", borderRadius: "8px", border: "none", cursor: "pointer",
-                background: form.estado === "cancelada" ? "#34C759" : "#ff3b30",
-                color: "#fff", fontSize: "0.8rem", fontWeight: 600,
+            {bloqueado && rolUsuario === "logística" && (
+              <div style={{ background: "#fff7e6", borderRadius: "10px", padding: "0.6rem 0.85rem", marginBottom: "1rem", fontSize: "0.78rem", color: "#a87000" }}>
+                🔒 El total y el vendedor asignado no se pueden modificar desde esta cuenta.
+              </div>
+            )}
+
+            {/* Estado */}
+            <div style={{ padding: "0.75rem 1rem", background: form.estado === "cancelada" ? "#fff2f2" : "#f0fff4", borderRadius: "10px", marginBottom: "1.25rem", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <span style={{ fontSize: "0.85rem", fontWeight: 600, color: form.estado === "cancelada" ? "#ff3b30" : "#34C759" }}>
+                {form.estado === "cancelada" ? "Cancelada" : "Completada"}
+              </span>
+              <button onClick={() => setForm(p => ({ ...p, estado: p.estado === "cancelada" ? "completada" : "cancelada" }))}
+                style={{ padding: "0.4rem 0.85rem", borderRadius: "8px", border: "none", cursor: "pointer", background: form.estado === "cancelada" ? "#34C759" : "#ff3b30", color: "#fff", fontSize: "0.8rem", fontWeight: 600 }}>
+                {form.estado === "cancelada" ? "Marcar completada" : "Marcar cancelada"}
+              </button>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 1rem" }}>
+              <div style={fieldStyle}>
+                <label style={labelStyle}>Fecha</label>
+                <input type="date" name="fecha_orden" value={form.fecha_orden || ""} onChange={handleChange} style={inputStyle} />
+              </div>
+              <div style={fieldStyle}>
+                <label style={labelStyle}>Total a pagar</label>
+                <input name="total_pagar" value={form.total_pagar || ""} onChange={handleChange} disabled={rolUsuario === "logística"} style={rolUsuario === "logística" ? inputBloqueadoStyle : inputStyle} placeholder="$0.00" />
+              </div>
+            </div>
+
+            <div style={fieldStyle}>
+              <label style={labelStyle}>Artículos</label>
+              <textarea name="articulos" value={form.articulos || ""} onChange={handleChange} style={{ ...inputStyle, resize: "vertical", minHeight: 72 }} />
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 1rem" }}>
+              <div style={fieldStyle}>
+                <label style={labelStyle}>Nombre del cliente</label>
+                <input name="nombre_cliente" value={form.nombre_cliente || ""} onChange={handleChange} style={inputStyle} />
+              </div>
+              <div style={fieldStyle}>
+                <label style={labelStyle}>Número de contacto</label>
+                <input name="numero_contacto" value={form.numero_contacto || ""} onChange={handleChange} style={inputStyle} />
+              </div>
+            </div>
+
+            {tipo === "local" ? (
+              <>
+                <div style={fieldStyle}>
+                  <label style={labelStyle}>Municipio</label>
+                  <select name="municipio" value={form.municipio || ""} onChange={handleChange} style={inputStyle}>
+                    {MUNICIPIOS_LOCAL.map(m => <option key={m} value={m}>{m}</option>)}
+                  </select>
+                </div>
+                <div style={fieldStyle}>
+                  <label style={labelStyle}>Relación con lugar de entrega</label>
+                  <select name="relacion_entrega" value={form.relacion_entrega || ""} onChange={handleChange} style={inputStyle}>
+                    {["Lugar de residencia del cliente", "Lugar de trabajo del cliente", "Lugar de estudio del cliente", "Cliente visitará el lugar durante unas horas", "Cliente llegará al lugar para recibir la orden"].map(r => <option key={r} value={r}>{r}</option>)}
+                  </select>
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 1rem" }}>
+                  <div style={fieldStyle}>
+                    <label style={labelStyle}>Tipo de entrega</label>
+                    <select name="tipo_entrega" value={form.tipo_entrega || ""} onChange={handleChange} style={inputStyle}>
+                      {TIPOS_ENTREGA.map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                  </div>
+                  <div style={fieldStyle}>
+                    <label style={labelStyle}>Departamento</label>
+                    <select name="departamento" value={form.departamento || ""} onChange={handleChange} style={inputStyle}>
+                      {DEPARTAMENTOS.map(d => <option key={d} value={d}>{d}</option>)}
+                    </select>
+                  </div>
+                </div>
+                <div style={fieldStyle}>
+                  <label style={labelStyle}>Municipio</label>
+                  <input name="municipio" value={form.municipio || ""} onChange={handleChange} style={inputStyle} />
+                </div>
+              </>
+            )}
+
+            <div style={fieldStyle}>
+              <label style={labelStyle}>Dirección de entrega</label>
+              <textarea name="direccion_entrega" value={form.direccion_entrega || ""} onChange={handleChange} style={{ ...inputStyle, resize: "vertical", minHeight: 64 }} />
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 1rem" }}>
+              <div style={fieldStyle}>
+                <label style={labelStyle}>Forma de pago</label>
+                <select name="forma_pago" value={form.forma_pago || ""} onChange={handleChange} style={inputStyle}>
+                  {FORMAS_PAGO.map(f => <option key={f} value={f}>{f}</option>)}
+                </select>
+              </div>
+              <div style={fieldStyle}>
+                <label style={labelStyle}>Tipo de comprobante</label>
+                <select name="tipo_comprobante" value={form.tipo_comprobante || ""} onChange={handleChange} style={inputStyle}>
+                  {TIPOS_COMPROBANTE.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </div>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 1rem" }}>
+              <div style={fieldStyle}>
+                <label style={labelStyle}>Perfil</label>
+                <select name={tipo === "local" ? "perfil_salio_1" : "perfil_salio"} value={form.perfil_salio_1 || form.perfil_salio || ""} onChange={handleChange} style={inputStyle}>
+                  {PERFILES.map(p => <option key={p} value={p}>{p}</option>)}
+                </select>
+              </div>
+              <div style={fieldStyle}>
+                <label style={labelStyle}>Quién ingresa</label>
+                <select name="quien_ingresa" value={form.quien_ingresa || ""} onChange={handleChange} disabled={rolUsuario === "logística"} style={rolUsuario === "logística" ? inputBloqueadoStyle : inputStyle}>
+                  {QUIEN_INGRESA.map(q => <option key={q} value={q}>{q}</option>)}
+                </select>
+              </div>
+            </div>
+
+            <div style={fieldStyle}>
+              <label style={labelStyle}>Comentario libre</label>
+              <textarea name="comentario_libre" value={form.comentario_libre || ""} onChange={handleChange} style={{ ...inputStyle, resize: "vertical", minHeight: 64 }} />
+            </div>
+
+            {/* Botones */}
+            <div style={{ display: "flex", gap: "0.75rem", paddingTop: "1rem", borderTop: "1px solid #f5f5f7" }}>
+              <button onClick={onClose} style={{
+                flex: 1, padding: "0.75rem", background: "#f5f5f7", color: "#6e6e73",
+                border: "none", borderRadius: "10px", fontWeight: 600, fontSize: "0.9rem", cursor: "pointer",
+                fontFamily: "'Inter', sans-serif",
+              }}>Cancelar</button>
+              <button onClick={handleSave} disabled={saving} style={{
+                flex: 2, padding: "0.75rem",
+                background: saving ? "#e5e5ea" : "#007AFF",
+                color: saving ? "#6e6e73" : "#fff",
+                border: "none", borderRadius: "10px", fontWeight: 600, fontSize: "0.9rem",
+                cursor: saving ? "default" : "pointer", fontFamily: "'Inter', sans-serif",
               }}>
-              {form.estado === "cancelada" ? "Marcar completada" : "Marcar cancelada"}
-            </button>
-          </div>
-
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 1rem" }}>
-            <div style={fieldStyle}>
-              <label style={labelStyle}>Fecha</label>
-              <input type="date" name="fecha_orden" value={form.fecha_orden || ""} onChange={handleChange} style={inputStyle} />
-            </div>
-            <div style={fieldStyle}>
-              <label style={labelStyle}>Total a pagar</label>
-              <input name="total_pagar" value={form.total_pagar || ""} onChange={handleChange} disabled={bloqueado} style={bloqueado ? inputBloqueadoStyle : inputStyle} placeholder="$0.00" />
+                {saving ? "Guardando..." : "Guardar cambios"}
+              </button>
             </div>
           </div>
 
-          <div style={fieldStyle}>
-            <label style={labelStyle}>Artículos</label>
-            <textarea name="articulos" value={form.articulos || ""} onChange={handleChange} style={{ ...inputStyle, resize: "vertical", minHeight: 72 }} />
-          </div>
-
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 1rem" }}>
-            <div style={fieldStyle}>
-              <label style={labelStyle}>Nombre del cliente</label>
-              <input name="nombre_cliente" value={form.nombre_cliente || ""} onChange={handleChange} style={inputStyle} />
-            </div>
-            <div style={fieldStyle}>
-              <label style={labelStyle}>Número de contacto</label>
-              <input name="numero_contacto" value={form.numero_contacto || ""} onChange={handleChange} style={inputStyle} />
-            </div>
-          </div>
-
-          {tipo === "local" ? (
-            <>
-              <div style={fieldStyle}>
-                <label style={labelStyle}>Municipio</label>
-                <select name="municipio" value={form.municipio || ""} onChange={handleChange} style={inputStyle}>
-                  {MUNICIPIOS_LOCAL.map(m => <option key={m} value={m}>{m}</option>)}
-                </select>
+          {/* Columna derecha — Comentarios */}
+          <div style={{ width: 260, display: "flex", flexDirection: "column", flexShrink: 0 }}>
+            <div style={{ padding: "0.85rem 1rem", borderBottom: "1px solid #f5f5f7", flexShrink: 0 }}>
+              <div style={{ fontSize: "0.72rem", fontWeight: 600, color: "#6e6e73", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                Notas internas
               </div>
-              <div style={fieldStyle}>
-                <label style={labelStyle}>Relación con lugar de entrega</label>
-                <select name="relacion_entrega" value={form.relacion_entrega || ""} onChange={handleChange} style={inputStyle}>
-                  {["Lugar de residencia del cliente", "Lugar de trabajo del cliente", "Lugar de estudio del cliente", "Cliente visitará el lugar durante unas horas", "Cliente llegará al lugar para recibir la orden"].map(r => <option key={r} value={r}>{r}</option>)}
-                </select>
-              </div>
-            </>
-          ) : (
-            <>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 1rem" }}>
-                <div style={fieldStyle}>
-                  <label style={labelStyle}>Tipo de entrega</label>
-                  <select name="tipo_entrega" value={form.tipo_entrega || ""} onChange={handleChange} style={inputStyle}>
-                    {TIPOS_ENTREGA.map(t => <option key={t} value={t}>{t}</option>)}
-                  </select>
+            </div>
+
+            {/* Chat */}
+            <div ref={chatRef} style={{ flex: 1, overflowY: "auto", padding: "0.85rem", display: "flex", flexDirection: "column", gap: "0.6rem" }}>
+              {comentarios.length === 0 ? (
+                <div style={{ textAlign: "center", color: "#6e6e73", fontSize: "0.78rem", padding: "1.5rem 0" }}>
+                  Sin notas aún
                 </div>
-                <div style={fieldStyle}>
-                  <label style={labelStyle}>Departamento</label>
-                  <select name="departamento" value={form.departamento || ""} onChange={handleChange} style={inputStyle}>
-                    {DEPARTAMENTOS.map(d => <option key={d} value={d}>{d}</option>)}
-                  </select>
-                </div>
+              ) : comentarios.map((c, i) => {
+                const esMio = c.usuario === (user?.nombre || "");
+                return (
+                  <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: esMio ? "flex-end" : "flex-start" }}>
+                    <div style={{ fontSize: "0.65rem", color: "#6e6e73", marginBottom: "0.2rem", display: "flex", alignItems: "center", gap: "0.3rem" }}>
+                      <span style={{ width: 6, height: 6, borderRadius: "50%", background: coloresRol[c.rol] || "#6e6e73", display: "inline-block" }} />
+                      {c.usuario} · {c.rol}
+                    </div>
+                    <div style={{
+                      background: esMio ? "#007AFF" : "#f5f5f7",
+                      color: esMio ? "#fff" : "#1d1d1f",
+                      borderRadius: esMio ? "12px 12px 2px 12px" : "12px 12px 12px 2px",
+                      padding: "0.5rem 0.75rem",
+                      fontSize: "0.82rem",
+                      maxWidth: "90%",
+                      lineHeight: 1.4,
+                    }}>
+                      {c.mensaje}
+                    </div>
+                    <div style={{ fontSize: "0.6rem", color: "#6e6e73", marginTop: "0.2rem" }}>
+                      {new Date(c.creado_en).toLocaleTimeString("es-SV", { hour: "2-digit", minute: "2-digit" })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Input comentario */}
+            <div style={{ padding: "0.75rem", borderTop: "1px solid #f5f5f7", flexShrink: 0 }}>
+              <div style={{ display: "flex", gap: "0.4rem" }}>
+                <input
+                  value={nuevoComentario}
+                  onChange={e => setNuevoComentario(e.target.value)}
+                  onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); enviarComentario(); } }}
+                  placeholder="Escribe una nota..."
+                  style={{
+                    flex: 1, padding: "0.5rem 0.75rem",
+                    border: "1px solid #e5e5ea", borderRadius: "10px",
+                    fontSize: "0.82rem", outline: "none",
+                    background: "#f5f5f7", fontFamily: "'Inter', sans-serif",
+                  }}
+                />
+                <button onClick={enviarComentario} disabled={enviando || !nuevoComentario.trim()} style={{
+                  padding: "0.5rem 0.75rem", background: nuevoComentario.trim() ? "#007AFF" : "#e5e5ea",
+                  border: "none", borderRadius: "10px", cursor: nuevoComentario.trim() ? "pointer" : "default",
+                  color: nuevoComentario.trim() ? "#fff" : "#6e6e73",
+                  display: "flex", alignItems: "center",
+                }}>
+                  <MessageCircle size={15} />
+                </button>
               </div>
-              <div style={fieldStyle}>
-                <label style={labelStyle}>Municipio</label>
-                <input name="municipio" value={form.municipio || ""} onChange={handleChange} style={inputStyle} />
-              </div>
-            </>
-          )}
-
-          <div style={fieldStyle}>
-            <label style={labelStyle}>Dirección de entrega</label>
-            <textarea name="direccion_entrega" value={form.direccion_entrega || ""} onChange={handleChange} style={{ ...inputStyle, resize: "vertical", minHeight: 64 }} />
-          </div>
-
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 1rem" }}>
-            <div style={fieldStyle}>
-              <label style={labelStyle}>Forma de pago</label>
-              <select name="forma_pago" value={form.forma_pago || ""} onChange={handleChange} style={inputStyle}>
-                {FORMAS_PAGO.map(f => <option key={f} value={f}>{f}</option>)}
-              </select>
-            </div>
-            <div style={fieldStyle}>
-              <label style={labelStyle}>Tipo de comprobante</label>
-              <select name="tipo_comprobante" value={form.tipo_comprobante || ""} onChange={handleChange} style={inputStyle}>
-                {TIPOS_COMPROBANTE.map(t => <option key={t} value={t}>{t}</option>)}
-              </select>
             </div>
           </div>
-
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 1rem" }}>
-            <div style={fieldStyle}>
-              <label style={labelStyle}>Perfil</label>
-              <select name={tipo === "local" ? "perfil_salio_1" : "perfil_salio"} value={form.perfil_salio_1 || form.perfil_salio || ""} onChange={handleChange} style={inputStyle}>
-                {PERFILES.map(p => <option key={p} value={p}>{p}</option>)}
-              </select>
-            </div>
-            <div style={fieldStyle}>
-              <label style={labelStyle}>Quién ingresa</label>
-              <select name="quien_ingresa" value={form.quien_ingresa || ""} onChange={handleChange} disabled={bloqueado} style={bloqueado ? inputBloqueadoStyle : inputStyle}>
-                {QUIEN_INGRESA.map(q => <option key={q} value={q}>{q}</option>)}
-              </select>
-            </div>
-          </div>
-
-          <div style={fieldStyle}>
-            <label style={labelStyle}>Comentario libre</label>
-            <textarea name="comentario_libre" value={form.comentario_libre || ""} onChange={handleChange} style={{ ...inputStyle, resize: "vertical", minHeight: 64 }} />
-          </div>
-
         </div>
-        {/* Fin contenido scrolleable */}
-
-        {/* Botones fijos */}
-        <div style={{ display: "flex", gap: "0.75rem", paddingTop: "1rem", borderTop: "1px solid #f5f5f7", marginTop: "0.5rem", flexShrink: 0 }}>
-          <button onClick={onClose} style={{
-            flex: 1, padding: "0.75rem", background: "#f5f5f7", color: "#6e6e73",
-            border: "none", borderRadius: "10px", fontWeight: 600, fontSize: "0.9rem", cursor: "pointer",
-            fontFamily: "'Inter', sans-serif",
-          }}>Cancelar</button>
-          <button onClick={handleSave} disabled={saving} style={{
-            flex: 2, padding: "0.75rem",
-            background: saving ? "#e5e5ea" : "#007AFF",
-            color: saving ? "#6e6e73" : "#fff",
-            border: "none", borderRadius: "10px", fontWeight: 600, fontSize: "0.9rem",
-            cursor: saving ? "default" : "pointer",
-            fontFamily: "'Inter', sans-serif",
-          }}>
-            {saving ? "Guardando..." : "Guardar cambios"}
-          </button>
-        </div>
-
       </div>
     </div>
   );
@@ -782,8 +880,10 @@ function TablaOrdenes({ ordenes, tipo, onUpdateEnvio, esAdmin, rolUsuario, onSav
           orden={ordenEditar}
           tipo={tipoEditar}
           rolUsuario={rolUsuario}
+          user={user}
           onClose={() => setOrdenEditar(null)}
           onSave={() => { setOrdenEditar(null); onSave && onSave(); }}
+          
         />
       )}
     </div>
@@ -1381,17 +1481,14 @@ function AdminOrdenes({ rolUsuario }) {
   ];
 
   useEffect(() => {
-  if (primeraVez.current) {
-    primeraVez.current = false;
+    primeraVez.current = true;
     cargarOrdenes();
-  }
-  const interval = setInterval(cargarOrdenes, 10000);
-  return () => clearInterval(interval);
-}, [filtroFecha, rangoFecha]);
-
+    const interval = setInterval(cargarOrdenes, 10000);
+    return () => clearInterval(interval);
+  }, [filtroFecha, rangoFecha]);
 
   async function cargarOrdenes() {
-    setLoading(true);
+    if (primeraVez.current) setLoading(true);
     try {
       const urlFiltro = rangoFecha === "dia"
         ? "fecha_orden=eq." + filtroFecha
@@ -1474,9 +1571,7 @@ function AdminOrdenes({ rolUsuario }) {
   const lF = filtrar(locales);
   const dF = filtrar(deptos);
   const todosF = [...lF, ...dF].sort((a, b) => new Date(b.creado_en) - new Date(a.creado_en));
-
   const pendientesCount = [...locales, ...deptos].filter(o => o.estado_flujo === "pendiente_aprobacion" || !o.estado_flujo).length;
-
   const totalL = lF.filter(o => o.estado !== "cancelada").reduce((s, o) => s + parseMonto(o.total_pagar) - (o.costo_envio || 0), 0);
   const totalD = dF.filter(o => o.estado !== "cancelada").reduce((s, o) => s + parseMonto(o.total_pagar) - ENVIO_DEPTO, 0);
 
@@ -1498,7 +1593,6 @@ function AdminOrdenes({ rolUsuario }) {
     <div style={{ maxWidth: 1200, margin: "0 auto", padding: "2rem 1.5rem" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
         <h2 style={{ fontSize: "1.5rem", fontWeight: 700, color: "#1d1d1f", margin: 0, letterSpacing: "-0.02em" }}>Órdenes</h2>
-        {/* Badge de pendientes */}
         {pendientesCount > 0 && (
           <button onClick={() => setFiltroPendientes(!filtroPendientes)} style={{
             display: "flex", alignItems: "center", gap: "0.5rem",
@@ -1514,7 +1608,6 @@ function AdminOrdenes({ rolUsuario }) {
         )}
       </div>
 
-      {/* Filtros */}
       <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", marginBottom: "1.25rem" }}>
         <input type="date" value={filtroFecha} onChange={e => setFiltroFecha(e.target.value)} style={selectStyle} />
         <button onClick={() => setRangoFecha(rangoFecha === "dia" ? "todo" : "dia")} style={{
@@ -1551,14 +1644,12 @@ function AdminOrdenes({ rolUsuario }) {
         />
       </div>
 
-      {/* Stats */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "1rem", marginBottom: "1.5rem" }}>
         <StatCard label="Locales (neto)" value={formatMoney(totalL)} sub={lF.length + " órdenes"} />
         <StatCard label="Deptos (neto)" value={formatMoney(totalD)} sub={dF.length + " órdenes"} />
         <StatCard label="Total General" value={formatMoney(totalL + totalD)} sub={todosF.length + " órdenes"} accent="#007AFF" />
       </div>
 
-      {/* Tabs y tabla */}
       <div style={{ background: "#fff", borderRadius: "16px", boxShadow: "0 2px 12px rgba(0,0,0,0.04)", overflow: "hidden" }}>
         <div style={{ display: "flex", gap: "0.25rem", padding: "0.75rem 1rem", borderBottom: "1px solid #f5f5f7" }}>
           <button onClick={() => setTab("todos")} style={tabStyle(tab === "todos")}>Todos ({todosF.length})</button>
@@ -1568,15 +1659,16 @@ function AdminOrdenes({ rolUsuario }) {
         {loading
           ? <div style={{ padding: "3rem", textAlign: "center", color: "#6e6e73" }}>Cargando...</div>
           : tab === "todos"
-          ? <TablaOrdenes ordenes={todosF} tipo="local" onUpdateEnvio={actualizarEnvio} esAdmin={esAdminCompleto} rolUsuario={rolUsuario} onSave={cargarOrdenes} onAprobar={aprobarOrden} />
+          ? <TablaOrdenes ordenes={todosF} tipo="local" onUpdateEnvio={actualizarEnvio} esAdmin={esAdminCompleto} rolUsuario={rolUsuario} onSave={cargarOrdenes} onAprobar={aprobarOrden} user={user}/>
           : tab === "locales"
-          ? <TablaOrdenes ordenes={lF} tipo="local" onUpdateEnvio={actualizarEnvio} esAdmin={esAdminCompleto} rolUsuario={rolUsuario} onSave={cargarOrdenes} onAprobar={aprobarOrden} />
-          : <TablaOrdenes ordenes={dF} tipo="departamental" esAdmin={esAdminCompleto} rolUsuario={rolUsuario} onSave={cargarOrdenes} onAprobar={aprobarOrden} />
+          ? <TablaOrdenes ordenes={lF} tipo="local" onUpdateEnvio={actualizarEnvio} esAdmin={esAdminCompleto} rolUsuario={rolUsuario} onSave={cargarOrdenes} onAprobar={aprobarOrden} user={user} />
+          : <TablaOrdenes ordenes={dF} tipo="departamental" esAdmin={esAdminCompleto} rolUsuario={rolUsuario} onSave={cargarOrdenes} onAprobar={aprobarOrden} user={user} />
         }
       </div>
     </div>
   );
 }
+
 
 
 // ══ AdminEstadisticas ═════════════════════════════════════
@@ -3594,9 +3686,10 @@ function OperacionesPanel({ user }) {
         </div>
 
         {ordenEditar && (
-          <ModalEditar orden={ordenEditar} tipo={tipoEditar} rolUsuario="operaciones"
+          <ModalEditar orden={ordenEditar} tipo={tipoEditar} rolUsuario="operaciones" user={user}
             onClose={() => setOrdenEditar(null)}
-            onSave={() => { setOrdenEditar(null); cargarDatos(); }} />
+            onSave={() => { setOrdenEditar(null); cargarDatos(); }} 
+            user={user} />
         )}
       </div>
     );
@@ -3684,14 +3777,15 @@ function OperacionesPanel({ user }) {
                 })}
               </tbody>
             </table>
+
           </div>
         )}
       </div>
 
       {ordenEditar && (
-        <ModalEditar orden={ordenEditar} tipo={tipoEditar} rolUsuario="operaciones"
+        <ModalEditar orden={ordenEditar} tipo={tipoEditar} rolUsuario="operaciones" user={user}
           onClose={() => setOrdenEditar(null)}
-          onSave={() => { setOrdenEditar(null); cargarDatos(); }} />
+          onSave={() => { setOrdenEditar(null); cargarDatos(); }}  />
       )}
     </div>
   );
@@ -4287,7 +4381,7 @@ export default function App() {
   function renderContent() {
     if (user.rol === "admin") {
       if (activeTab === "dashboard") return <Dashboard user={user} />;
-      if (activeTab === "ordenes") return <AdminOrdenes rolUsuario="admin" />;
+      if (activeTab === "ordenes") return <AdminOrdenes rolUsuario="admin" user={user} />;
       if (activeTab === "estadisticas") return <AdminEstadisticas />;
       if (activeTab === "vendedores") return <AdminVendedores />;
       if (activeTab === "equipo") return <AdminEquipo />;
