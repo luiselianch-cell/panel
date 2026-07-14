@@ -3689,7 +3689,7 @@ function OperacionesPanel({ user }) {
           <ModalEditar orden={ordenEditar} tipo={tipoEditar} rolUsuario="operaciones" user={user}
             onClose={() => setOrdenEditar(null)}
             onSave={() => { setOrdenEditar(null); cargarDatos(); }} 
-            user={user} />
+             />
         )}
       </div>
     );
